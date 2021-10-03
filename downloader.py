@@ -75,10 +75,10 @@ class ItchApiClient():
 		return self.requests.get(self.base_url + endpoint, *args, **kwargs)
 
 
-def download_file(client: ItchApiClient, upload_id: int, download_path: str, print_url: bool=False):
+def download_file(client: ItchApiClient, upload_id: int, download_path: str, creds: dict, print_url: bool=False):
 	# No timeouts, chunked uploads, default retry strategy, should be all good?
 	try:
-		with client.get(f"/uploads/{upload_id}/download", stream=True) as r:
+		with client.get(f"/uploads/{upload_id}/download", data=creds, stream=True) as r:
 			r.raise_for_status()
 			if print_url:
 				print(f"Download URL: {r.url}")
@@ -235,7 +235,7 @@ def download_jam(path_to_json: str, download_to: str, api_key: str, continue_fro
 
 				target_path = os.path.join(download_path, file_name)
 				try:
-					download_file(client, upload_id, target_path, print_url=upload_is_external)
+					download_file(client, upload_id, target_path, creds, print_url=upload_is_external)
 				except ItchDownloadError as e:
 					jobs_failed.append((game_id, file_name, str(e)))
 					print(f"Download failed for {file_name}: {e}")
