@@ -286,17 +286,23 @@ def download_jam(path_to_json: str, download_to: str, api_key: str, continue_fro
 			print(f"{title} ({game_id}) - {url} - {message}")
 
 
-if __name__ == "__main__":
+def get_parser():
 	parser = argparse.ArgumentParser(description="Downloads games from public Itch.io game jams.")
 	parser.add_argument("entries", help="path to the game jam entries.json file")
 	parser.add_argument("--api-key", metavar="key", required=True, help="itch.io API key from https://itch.io/user/settings/api-keys")
 	parser.add_argument("--download-to", metavar="path", help="directory to save results into (default: current dir)")
 	parser.add_argument("--continue-from", metavar="id", type=int, help="skip all entries until the provided entry ID is found")
-	args = parser.parse_args()
+	return parser
 
+
+def get_download_dir(args: argparse.Namespace) -> str:
 	download_to = os.getcwd()
 	if args.download_to is not None:
 		download_to = os.path.normpath(args.download_to)
 		os.makedirs(download_to)
 
+
+if __name__ == "__main__":
+	args = get_parser().parse_args()
+	download_to = get_download_dir(args)
 	download_jam(args.entries, download_to, args.api_key, continue_from=args.continue_from)
