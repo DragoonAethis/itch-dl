@@ -1,3 +1,2 @@
-selenium
 requests
 python-slugify
