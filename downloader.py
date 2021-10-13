@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Python 3.8+ and dependencies listed below required.
 import os
+import re
 import sys
 import json
 import time
@@ -129,16 +130,54 @@ def parse_jobs(jam_json: dict) -> list[tuple[int, str, str]]:
 	return [(int(e['game']['id']), e['game']['title'], e['game']['url']) for e in jam_json['jam_games']]
 
 
-def download_jam(path_to_json: str, download_to: str, api_key: str, continue_from: str=None):
-	try:
-		with open(path_to_json) as f:
-			jam_json = json.load(f)
-	except FileNotFoundError:
-		print(f"File {path_to_json} not found.")
-	except json.decoder.JSONDecodeError:
-		print(F"Provided entries file is not a valid JSON file.")
+def get_game_jam_json(jam_path: str) -> dict:
+	# Do we have an URL?
+	jam_path = jam_path.strip()
+	if jam_path.startswith("https://") or jam_path.startswith("http://"):
+		r = requests.get(jam_path)
+		if not r.ok:
+			raise Exception(f"Could not download game jam site from {jam_path} (code {r.status_code}): {r.reason}")
 
+		jam_id_line = None
+		for line in r.text.splitlines():
+			if "ViewJam" in line:
+				jam_id_line = line
+
+		if jam_id_line is None:
+			raise Exception(f"Jam site did not contain the ID line - please provide the path to the game jam entries JSON file instead.")
+
+		found_ids = re.findall(r'\"id\":([0-9]+)', jam_id_line)
+		if len(found_ids) == 0:
+			raise Exception(f"Could not extract the jam ID from the provided site.")
+
+		jam_id = int(found_ids[0])  # Always grab the first one for now...
+		print(f"Extracted jam ID: {jam_id}")
+
+		r = requests.get(f"https://itch.io/jam/{jam_id}/entries.json")
+		if not r.ok:
+			raise Exception(f"Could not download the game jam entries list.")
+
+		content = r.text
+	elif os.path.isfile(jam_path):
+		try:
+			with open(jam_path) as f:
+				content = f.read()
+		except Exception as e:
+			raise Exception(f"Could not open/read the game jam entries file: {e}")
+	else:
+		raise Exception(f"Provided game jam path is invalid (not a link/existing file).")
+
+	try:
+		jam_json = json.loads(content)
+	except json.decoder.JSONDecodeError:
+		print(f"Provided game jam entries file is not a valid JSON file.")
+
+	return jam_json
+
+
+def download_jam(jam_path: str, download_to: str, api_key: str, continue_from: str=None):
 	client = ItchApiClient(ITCH_API, api_key)
+	jam_json = get_game_jam_json(jam_path)
 
 	# Check API key validity:
 	profile_req = client.get("/profile")
