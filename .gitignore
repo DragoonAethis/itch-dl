@@ -1,6 +1,13 @@
 # Developers' private notes/output dirs/etc
 private/
 
+# Make sure nobody pushes the lock file (I want all deps
+# to stay up-to-date, if it breaks, it needs to be fixed!)
+poetry.lock
+
+# PyCharm exceptions
+.idea/workspace.xml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
