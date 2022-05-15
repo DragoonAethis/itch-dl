@@ -5,12 +5,13 @@ Bulk download games from [itch.io](https://itch.io/).
 - Can download game jams, browse pages (popular, newest, browse by tag...) and individual games.
 - Requires Python 3.8+, grab it from PyPI: `pip install itch-dl`
 - For development, use [Poetry](https://python-poetry.org/).
-- Optionally requires wget for site mirroring.
 
-How to use this:
+
+## How to use
 
 - Log into itch.io with the account you'd like to use for downloading.
-- Generate a new API key on your user account page: https://itch.io/user/settings/api-keys
+- Generate [a new API key](https://itch.io/user/settings/api-keys) on your user account page.
+- Check out which flags you can toggle: `itch-dl --help`
 - Run the downloader: `itch-dl --api-key <KEY> https://itch.io/jam/yourjamhere`
 - Wait. This is going to take a while.
 
@@ -21,12 +22,13 @@ game jam. The input can also be a path to a itch.io JSON file with game jam entr
 a list of itch.io game URLs (not browse/jam pages!) to download.
 
 **It's expected that the downloader output will not be complete** - logs are stupidly verbose
-and it prints a report on successful/failed downloads, so you must manually grab whatever was
-not handled for you automatically for some reason.
+and it prints a report on failed downloads and external URLs (links to files that are not on
+itch.io itself, but rather on an external host like Google Drive, Dropbox, etc), so you must
+manually grab whatever was not handled for you automatically.
 
 The downloader also grabs the entry page HTML, which usually comes with controls and such. By
 default, it does not download images, assets and so on, just the text - use `--mirror-web` to
-try and download these as well. This requires `wget` to be available in your `PATH`.
+try and download these as well. This does not work very well yet, but gets the basics done.
 
 
 ## Game Jam Entries JSON

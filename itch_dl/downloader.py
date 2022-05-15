@@ -2,7 +2,8 @@ import os
 import json
 import re
 import logging
-from typing import Tuple, List, Dict, TypedDict, Optional
+import urllib.parse
+from typing import List, Dict, TypedDict, Optional, Union
 
 from bs4 import BeautifulSoup
 from requests.exceptions import HTTPError
@@ -13,7 +14,7 @@ from tqdm.contrib.concurrent import thread_map
 from .api import ItchApiClient
 from .utils import ItchDownloadError, get_int_after_marker_in_json
 from .consts import ITCH_GAME_URL_REGEX
-from .infobox import parse_infobox
+from .infobox import parse_infobox, InfoboxMetadata
 
 TARGET_PATHS = {
     'site': 'site.html',
@@ -25,11 +26,11 @@ TARGET_PATHS = {
 
 
 class DownloadResult:
-    def __init__(self, url: str, success: bool, errors, external_urls: Optional[List[str]] = None):
+    def __init__(self, url: str, success: bool, errors, external_urls: List[str]):
         self.url = url
         self.success = success
-        self.errors = errors
-        self.external_urls = external_urls
+        self.errors = errors or []
+        self.external_urls = external_urls or []
 
 
 class GameMetadata(TypedDict, total=False):
@@ -47,7 +48,11 @@ class GameMetadata(TypedDict, total=False):
     screenshots: List[str]
     description: str
 
+    rating: Dict[str, Union[float, int]]
+    extra: InfoboxMetadata
+
     created_at: str
+    updated_at: str
     released_at: str
     published_at: str
 
@@ -60,7 +65,8 @@ class GameDownloader:
         self.download_keys = keys
         self.client = ItchApiClient(api_key)
 
-    def get_rating_json(self, site) -> Optional[dict]:
+    @staticmethod
+    def get_rating_json(site) -> Optional[dict]:
         for ldjson_node in site.find_all("script", type="application/ld+json"):
             try:
                 ldjson: dict = json.loads(ldjson_node.text.strip())
@@ -71,7 +77,8 @@ class GameDownloader:
 
         return None
 
-    def get_meta(self, site, **kwargs) -> Optional[str]:
+    @staticmethod
+    def get_meta(site, **kwargs) -> Optional[str]:
         """Grabs <meta property="xyz" content="value"/> values."""
         node = site.find("meta", attrs=kwargs)
         if not node:
@@ -140,8 +147,34 @@ class GameDownloader:
         infobox_div = site.find("div", class_="game_info_panel_widget")
         if infobox_div:
             infobox = parse_infobox(infobox_div)
+            for dt in ('created_at', 'updated_at', 'released_at', 'published_at'):
+                if dt in infobox:
+                    # noinspection PyTypedDict
+                    metadata[dt] = infobox[dt].isoformat()
+                    del infobox[dt]
 
-        TODO_KEYS = ['author', 'author_url', 'created_at', 'released_at', 'published_at']
+            if 'author' in infobox:
+                metadata['author'] = infobox['author']['author']
+                metadata['author_url'] = infobox['author']['author_url']
+                del infobox['author']
+
+            if 'authors' in infobox and 'author' not in metadata:
+                # Some games may have multiple authors (ex. compilations).
+                metadata['author'] = "Multiple authors"
+                metadata['author_url'] = f"https://{urllib.parse.urlparse(url).netloc}"
+
+            metadata['extra'] = infobox
+
+        agg_rating = rating_json.get('aggregateRating')
+        if agg_rating:
+            try:
+                metadata['rating'] = {
+                    'average': float(agg_rating['ratingValue']),
+                    'votes': agg_rating['ratingCount']
+                }
+            except:  # noqa
+                logging.exception("Could not extract the rating metadata...")
+                pass  # Nope, just, don't
 
         return metadata
 
@@ -179,7 +212,7 @@ class GameDownloader:
     def download(self, url: str, skip_downloaded: bool = True):
         match = re.match(ITCH_GAME_URL_REGEX, url)
         if not match:
-            return DownloadResult(url, False, [f"Game URL is invalid: {url} - please file a new issue."])
+            return DownloadResult(url, False, [f"Game URL is invalid: {url} - please file a new issue."], [])
 
         author, game = match['author'], match['game']
 
@@ -192,14 +225,14 @@ class GameDownloader:
             # As metadata is the final file we write, all the files
             # should already be downloaded at this point.
             logging.info("Skipping already-downloaded game for URL: %s", url)
-            return DownloadResult(url, True, [f"Game already downloaded."])
+            return DownloadResult(url, True, [f"Game already downloaded."], [])
 
         try:
             logging.info("Downloading %s", url)
             r = self.client.get(url, append_api_key=False)
             r.raise_for_status()
         except Exception as e:
-            return DownloadResult(url, False, [f"Could not download the game site for {url}: {e}"])
+            return DownloadResult(url, False, [f"Could not download the game site for {url}: {e}"], [])
 
         site = BeautifulSoup(r.text, features="lxml")
         try:
@@ -207,14 +240,14 @@ class GameDownloader:
             metadata = self.extract_metadata(game_id, url, site)
             title = metadata['title'] or game
         except ItchDownloadError as e:
-            return DownloadResult(url, False, [str(e)])
+            return DownloadResult(url, False, [str(e)], [])
 
         credentials = self.get_credentials(title, game_id)
         try:
             game_uploads_req = self.client.get(f"/games/{game_id}/uploads", data=credentials, timeout=15)
             game_uploads_req.raise_for_status()
         except Exception as e:
-            return DownloadResult(url, False, [f"Could not fetch game uploads for {title}: {e}"])
+            return DownloadResult(url, False, [f"Could not fetch game uploads for {title}: {e}"], [])
 
         game_uploads = game_uploads_req.json()['uploads']
         logging.debug("Found %d upload(s): %s", len(game_uploads), str(game_uploads))
@@ -264,17 +297,20 @@ class GameDownloader:
         if len(external_urls) > 0:
             logging.warning(f"Game {title} has external download URLs: {external_urls}")
 
-        # TODO: Screenshots and site assets
+        # TODO: Mirror JS/CSS assets
         if self.mirror_web:
             os.makedirs(paths['screenshots'], exist_ok=True)
             for screenshot in metadata['screenshots']:
+                if not screenshot:
+                    continue
+
                 file_name = os.path.basename(screenshot)
                 try:
                     self.download_file(screenshot, os.path.join(paths['screenshots'], file_name), credentials={})
                 except Exception as e:
                     errors.append(f"Screenshot download failed (this is not fatal): {e}")
 
-        if 'cover_url' in metadata:
+        if metadata.get('cover_url'):
             try:
                 cover_url = metadata['cover_url']
                 self.download_file(cover_url, paths['cover'] + os.path.splitext(cover_url)[-1], credentials={})
@@ -285,7 +321,7 @@ class GameDownloader:
             f.write(site.prettify())
 
         with open(paths['metadata'], 'w') as f:
-            json.dump(metadata, f)
+            json.dump(metadata, f, indent=4)
 
         if len(errors) > 0:
             logging.error(f"Game {title} has download errors: {errors}")
@@ -294,7 +330,14 @@ class GameDownloader:
         return DownloadResult(url, len(errors) == 0, errors, external_urls)
 
 
-def drive_downloads(jobs: List[str], download_to: str, mirror_web: bool, api_key: str, keys: Dict[int, str], parallel: int = 1):
+def drive_downloads(
+        jobs: List[str],
+        download_to: str,
+        mirror_web: bool,
+        api_key: str,
+        keys: Dict[int, str],
+        parallel: int = 1
+):
     downloader = GameDownloader(download_to, mirror_web, api_key, keys)
     tqdm_args = {
         "desc": "Games",
