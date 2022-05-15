@@ -65,4 +65,4 @@ def run() -> int:
     # Grab all the download keys (there's no way to fetch them per title...):
     keys = get_download_keys(client)
 
-    return drive_downloads(jobs, download_to, args.api_key, keys, parallel=args.parallel)
+    return drive_downloads(jobs, download_to, args.mirror_web, args.api_key, keys, parallel=args.parallel)

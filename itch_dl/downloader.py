@@ -13,10 +13,11 @@ from tqdm.contrib.concurrent import thread_map
 from .api import ItchApiClient
 from .utils import ItchDownloadError, get_int_after_marker_in_json
 from .consts import ITCH_GAME_URL_REGEX
-
+from .infobox import parse_infobox
 
 TARGET_PATHS = {
     'site': 'site.html',
+    'cover': 'cover',
     'metadata': 'metadata.json',
     'files': 'files',
     'screenshots': 'screenshots'
@@ -42,18 +43,21 @@ class GameMetadata(TypedDict, total=False):
     author: str
     author_url: str
 
-    description: str
     cover_url: str
+    screenshots: List[str]
+    description: str
 
     created_at: str
+    released_at: str
     published_at: str
 
 
 class GameDownloader:
-    def __init__(self, download_to: str, api_key: str, keys: Dict[int, str]):
+    def __init__(self, download_to: str, mirror_web: bool, api_key: str, keys: Dict[int, str]):
         self.download_to = download_to
-        self.download_keys = keys
+        self.mirror_web = mirror_web
 
+        self.download_keys = keys
         self.client = ItchApiClient(api_key)
 
     def get_rating_json(self, site) -> Optional[dict]:
@@ -112,20 +116,32 @@ class GameDownloader:
         return game_id
 
     def extract_metadata(self, game_id: int, url: str, site: BeautifulSoup) -> GameMetadata:
+        rating_json: Optional[dict] = self.get_rating_json(site)
+        title = rating_json.get("name")
+
         description: Optional[str] = self.get_meta(site, property="og:description")
         if not description:
             description = self.get_meta(site, name="description")
 
+        screenshot_urls: List[str] = []
+        screenshots_node = site.find("div", class_="screenshot_list")
+        if screenshots_node:
+            screenshot_urls = [a['href'] for a in screenshots_node.find_all('a')]
+
         metadata = GameMetadata(
             game_id=game_id,
-            title=site.find("h1", class_="game_title").text.strip(),
+            title=title or site.find("h1", class_="game_title").text.strip(),
             url=url,
             cover_url=self.get_meta(site, property="og:image"),
-            description=description
+            screenshots=screenshot_urls,
+            description=description,
         )
 
-        TODO_KEYS = ['author', 'author_url', 'created_at', 'published_at']
-        TODO_rating_json: Optional[dict] = self.get_rating_json(site)
+        infobox_div = site.find("div", class_="game_info_panel_widget")
+        if infobox_div:
+            infobox = parse_infobox(infobox_div)
+
+        TODO_KEYS = ['author', 'author_url', 'created_at', 'released_at', 'published_at']
 
         return metadata
 
@@ -137,17 +153,17 @@ class GameDownloader:
 
         return credentials
 
-    def download_file(self, upload_id: int, download_path: Optional[str], creds: dict) -> str:
-        """Performs a request to download a given upload by its ID, optionally saves the
+    def download_file(self, url: str, download_path: Optional[str], credentials: dict) -> str:
+        """Performs a request to download a given file, optionally saves the
         file to the provided path and returns the final URL that was downloaded."""
         try:
             # No timeouts, chunked uploads, default retry strategy, should be all good?
-            with self.client.get(f"/uploads/{upload_id}/download", data=creds, stream=True) as r:
+            with self.client.get(url, data=credentials, stream=True) as r:
                 r.raise_for_status()
 
                 if download_path is not None:  # ...and it will be for external downloads.
                     with tqdm.wrapattr(open(download_path, "wb"), "write",
-                                       miniters=1, desc=str(upload_id),
+                                       miniters=1, desc=url,
                                        total=int(r.headers.get('content-length', 0))) as f:
                         for chunk in r.iter_content(chunk_size=1048576):  # 1MB chunks
                             f.write(chunk)
@@ -155,6 +171,10 @@ class GameDownloader:
                 return r.url
         except HTTPError as e:
             raise ItchDownloadError(f"Unrecoverable download error: {e}")
+
+    def download_file_by_upload_id(self, upload_id: int, download_path: Optional[str], credentials: dict) -> str:
+        """Performs a request to download a given upload by its ID."""
+        return self.download_file(f"/uploads/{upload_id}/download", download_path, credentials)
 
     def download(self, url: str, skip_downloaded: bool = True):
         match = re.match(ITCH_GAME_URL_REGEX, url)
@@ -218,7 +238,7 @@ class GameDownloader:
                 target_path = None if upload_is_external else os.path.join(paths['files'], file_name)
 
                 try:
-                    target_url = self.download_file(upload_id, target_path, credentials)
+                    target_url = self.download_file_by_upload_id(upload_id, target_path, credentials)
                 except ItchDownloadError as e:
                     errors.append(f"Download failed for upload {upload}: {e}")
                     continue
@@ -245,6 +265,22 @@ class GameDownloader:
             logging.warning(f"Game {title} has external download URLs: {external_urls}")
 
         # TODO: Screenshots and site assets
+        if self.mirror_web:
+            os.makedirs(paths['screenshots'], exist_ok=True)
+            for screenshot in metadata['screenshots']:
+                file_name = os.path.basename(screenshot)
+                try:
+                    self.download_file(screenshot, os.path.join(paths['screenshots'], file_name), credentials={})
+                except Exception as e:
+                    errors.append(f"Screenshot download failed (this is not fatal): {e}")
+
+        if 'cover_url' in metadata:
+            try:
+                cover_url = metadata['cover_url']
+                self.download_file(cover_url, paths['cover'] + os.path.splitext(cover_url)[-1], credentials={})
+            except Exception as e:
+                errors.append(f"Cover art download failed (this is not fatal): {e}")
+
         with open(paths['site'], 'w') as f:
             f.write(site.prettify())
 
@@ -255,11 +291,11 @@ class GameDownloader:
             logging.error(f"Game {title} has download errors: {errors}")
 
         logging.info("Finished job %s (%s)", url, title)
-        return DownloadResult(url, True, errors, external_urls)
+        return DownloadResult(url, len(errors) == 0, errors, external_urls)
 
 
-def drive_downloads(jobs: List[str], download_to: str, api_key: str, keys: Dict[int, str], parallel: int = 1):
-    downloader = GameDownloader(download_to, api_key, keys)
+def drive_downloads(jobs: List[str], download_to: str, mirror_web: bool, api_key: str, keys: Dict[int, str], parallel: int = 1):
+    downloader = GameDownloader(download_to, mirror_web, api_key, keys)
     tqdm_args = {
         "desc": "Games",
         "unit": "game",
