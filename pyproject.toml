@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "itch-dl"
-packages = [{ include = "itchdl" }]
+packages = [{ include = "itch_dl" }]
 version = "0.1.0"
 description = "itch.io bulk game downloader"
 homepage = "https://github.com/DragoonAethis/itch-dl"
@@ -24,11 +24,15 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-requests = "^2.26.0"
-python-slugify = "^5.0.0"
+tqdm = "^4.64.0"
+urllib3 = "^1.26.9"
+requests = "^2.27.1"
+python-slugify = "^6.1.2"
+beautifulsoup4 = "^4.11.1"
+lxml = "^4.8.0"
 
-[tool.poetry.dev-dependencies]
-pytest = "^6.2"
+[tool.poetry.scripts]
+itch-dl = "itch_dl.cli:run"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
