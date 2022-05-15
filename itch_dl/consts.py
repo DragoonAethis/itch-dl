@@ -1,8 +1,9 @@
-from enum import Enum
-
 ITCH_BASE = "itch.io"
 ITCH_URL = f"https://{ITCH_BASE}"
 ITCH_API = f"https://api.{ITCH_BASE}"
+
+# Extracts https://user.itch.io/gamename to {'author': 'user', 'game': 'gamename'}
+ITCH_GAME_URL_REGEX = r"^https:\/\/(?P<author>[\w\d\-_]+).itch.io\/(?P<game>[\w\d\-_]+)$"
 
 ITCH_BROWSER_TYPES = [
     "games",
@@ -15,15 +16,3 @@ ITCH_BROWSER_TYPES = [
     "game-mods",
     "misc",
 ]
-
-
-class ItchDownloadResult(Enum):
-    SUCCESS = 0
-    FAILURE = 1
-    MISSING_DOWNLOAD = 2
-    DOWNLOAD_TIMEOUT = 3
-
-
-# I mean, not really a const but eh
-class ItchDownloadError(Exception):
-    pass

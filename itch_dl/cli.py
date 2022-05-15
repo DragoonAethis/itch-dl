@@ -6,6 +6,7 @@ from .handlers import get_jobs_for_url_or_path
 from .downloader import drive_downloads
 from .keys import get_download_keys
 from .api import ItchApiClient
+
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 

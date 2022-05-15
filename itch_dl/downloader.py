@@ -1,232 +1,44 @@
 import os
-import shutil
+import json
+import re
 import logging
-import traceback
-import subprocess
 from typing import Tuple, List, Dict, TypedDict, Optional
 
-from slugify import slugify
+from bs4 import BeautifulSoup
 from requests.exceptions import HTTPError
 
 from tqdm import tqdm
 from tqdm.contrib.concurrent import thread_map
 
 from .api import ItchApiClient
-from .consts import ItchDownloadError, ItchDownloadResult
+from .utils import ItchDownloadError, get_int_after_marker_in_json
+from .consts import ITCH_GAME_URL_REGEX
 
 
-# ------------------------------
-# --- OLD STUFF --- CUT HERE ---
-# ------------------------------
-
-
-WGET_PATH = shutil.which("wget")
-if WGET_PATH is None:
-    print(f"Warning: wget not available, site mirroring will not work!")
-
-
-def download_file(client: ItchApiClient, upload_id: int, download_path: str, creds: dict, print_url: bool=False):
-    # No timeouts, chunked uploads, default retry strategy, should be all good?
-    try:
-        with client.get(f"/uploads/{upload_id}/download", data=creds, stream=True) as r:
-            r.raise_for_status()
-            if print_url:
-                print(f"Download URL: {r.url}")
-
-            with open(download_path, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=1048576):  # 1MB chunks
-                    f.write(chunk)
-    except HTTPError as e:
-        raise ItchDownloadError(f"Unrecoverable download error: {e}")
-
-
-def get_meta_for_game_url(game_url: str) -> Tuple[int, str]:
-    """Finds the Game ID and Title for a Game URL."""
-    data_url = game_url.rstrip("/") + "/data.json"
-    data_req = requests.get(data_url)
-    r.raise_for_status()
-
-    data_json = data_req.json()
-    if not 'id' in data_json:
-        raise ItchDownloadError(f"Cannot fetch the Game ID for URL: {game_url}")
-
-    return data_json['id']
-
-
-
-
-
-
-
-def download_jam(jam_path: str, download_to: str, api_key: str, continue_from: str=None):
-    client = ItchApiClient(api_key)
-    jam_json = get_game_jam_json(jam_path)
-
-    # Check API key validity:
-    profile_req = client.get("/profile")
-    if not profile_req.ok:
-        print(f"Provided API key appears to be invalid: {profile_req.text}")
-        exit(1)
-
-    jobs = parse_jobs(jam_json)
-    jobs_successful = []
-    jobs_failed = []
-
-    game_id_to_meta = {}  # dict[game_id: int, (title: str, url: str)]
-
-    for game_id, title, url in jobs:
-        game_id_to_meta[game_id] = (title, url)
-
-    failed_game_ids = set()
-
-    # No "continue from"? Yep, start right away.
-    should_process_jobs = continue_from is None
-
-    for game_id, title, url in jobs:
-        label = f"{title} ({game_id})"
-        if not should_process_jobs:
-            if game_id == continue_from:
-                should_process_jobs = True
-            else:
-                continue
-
-        try:
-            download_path = os.path.join(download_to, slugify(title))
-            if PEDANTIC_MIRRORING:
-                site_mirror_path = os.path.join(download_to, "_sites")
-            else:
-                site_mirror_path = os.path.join(download_path, "site")
-            os.makedirs(download_path, exist_ok=True)
-            os.makedirs(site_mirror_path, exist_ok=True)
-        except:
-            raise ItchDownloadError(f"Could not create download directory: {download_path}")
-
-        print(f"Trying to download {label} to {download_path}")
-
-        if WGET_PATH is not None:
-            print("Downloading site...")
-            if PEDANTIC_MIRRORING:
-                extra_wget_args = [
-                    "--timestamping",
-                    "--span-hosts",
-                    "--convert-links",
-                    "--adjust-extension",
-                    "--page-requisites",
-                ]
-            else:
-                extra_wget_args = []
-
-            wget = subprocess.run([
-                WGET_PATH,
-                *extra_wget_args,
-                "--quiet",
-                url
-            ], cwd=site_mirror_path)
-
-            if wget.returncode != 0:
-                print(f"Warning: Site mirroring failed/incomplete.")
-
-        creds = {}
-        if game_id in self.download_keys:
-            creds['download_key_id'] = self.download_keys[game_id]
-            print("Using {creds} for private uploads")
-
-        game_uploads_req = client.get(f"/games/{game_id}/uploads", data=creds, timeout=15)
-        if not game_uploads_req.ok:
-            raise ItchDownloadError(f"Could not fetch game uploads for {label}: {game_uploads_req.text}")
-
-        game_uploads = game_uploads_req.json()['uploads']
-        print(f"Found {len(game_uploads)} upload(s)")
-
-        try:
-            for upload in game_uploads:
-                upload_id = upload['id']
-                file_name = upload['filename']
-                file_size = upload['size']
-                upload_is_external = upload['storage'] == 'external'
-
-                print(f"Downloading '{file_name}' ({upload_id}), {file_size} bytes...")
-                if upload_is_external:
-                    print("***********************************************************")
-                    print("*                                                         *")
-                    print("* WARNING: External storage - downloads will likely fail. *")
-                    print("*         Check the URL displayed below manually!         *")
-                    print("*                                                         *")
-                    print("***********************************************************")
-
-                target_path = os.path.join(download_path, file_name)
-                try:
-                    download_file(client, upload_id, target_path, creds, print_url=upload_is_external)
-                except ItchDownloadError as e:
-                    jobs_failed.append((game_id, file_name, str(e)))
-                    print(f"Download failed for {file_name}: {e}")
-                    continue
-
-                try:
-                    actual_file_size = os.stat(target_path).st_size
-                    if actual_file_size == file_size:
-                        jobs_successful.append((game_id, file_name))
-                    else:
-                        jobs_failed.append((game_id, file_name, f"File size is {actual_file_size}, expected {file_size}"))
-                except FileNotFoundError:
-                    jobs_failed.append((game_id, file_name, "Could not download file"))
-
-            print(f"Done downloading {label}")
-        except ItchDownloadError as e:
-            failed_game_ids.append((game_id, str(e)))
-            print(message)
-            continue
-        except Exception as e:
-            print(f"Critical error while downloading {label}: {e}")
-            failed_game_ids.append((game_id, str(e)))
-            traceback.print_exc()
-            print(message)
-            continue
-
-    successful_titles = {}
-    for game_id, file_name in jobs_successful:
-        if game_id not in successful_titles:
-            successful_titles[game_id] = [file_name]
-
-    if any(successful_titles):
-        print(f"\nAll done, downloaded files for {len(successful_titles)} title(s):")
-        for game_id, files in successful_titles.items():
-            print(f"{game_id_to_meta[game_id][0]}, {len(files)} file(s)")
-
-    if any(jobs_failed):
-        print(f"\nDownloads failed for {len(jobs_failed)} file(s):")
-        for game_id, file_name, message in jobs_failed:
-            title, url = game_id_to_meta[game_id]
-            print(f"{title} - {file_name} - {message}")
-            print(f"Title URL: {url}")
-
-    if any(failed_game_ids):
-        print(f"\nCompletely failed downloads for {len(failed_game_ids)} titles:")
-        for game_id, message in failed_game_ids:
-            title, url = game_id_to_meta[game_id]
-            print(f"{title} ({game_id}) - {url} - {message}")
-
-
-# ------------------------------
-# --- OLD STUFF --- CUT HERE ---
-# ------------------------------
-
-
-class GameAuthor(TypedDict, total=False):
-    name: str
-    url: str
+TARGET_PATHS = {
+    'site': 'site.html',
+    'metadata': 'metadata.json',
+    'files': 'files',
+    'screenshots': 'screenshots'
+}
 
 
 class GameMetadata(TypedDict, total=False):
-    description: str
-
-
-class GameDownloadJob(TypedDict, total=False):
-    url: str
     game_id: int
     title: str
-    author: GameAuthor
-    metadata: GameMetadata
+    url: str
+
+    errors: List[str]
+    external_downloads: List[str]
+
+    author: str
+    author_url: str
+
+    description: str
+    cover_url: str
+
+    created_at: str
+    published_at: str
 
 
 class GameDownloader:
@@ -236,16 +48,203 @@ class GameDownloader:
 
         self.client = ItchApiClient(api_key)
 
-    def download(self, url: str):
-        job = GameDownloadJob(url=url)
-        raise NotImplementedError("Not yet!")
+    def get_rating_json(self, site) -> Optional[dict]:
+        for ldjson_node in site.find_all("script", type="application/ld+json"):
+            try:
+                ldjson: dict = json.loads(ldjson_node.text.strip())
+                if ldjson.get("@type") == "Product":
+                    return ldjson
+            except json.JSONDecodeError:
+                continue  # Can't do much with this...
+
+        return None
+
+    def get_meta(self, site, **kwargs) -> Optional[str]:
+        """Grabs <meta property="xyz" content="value"/> values."""
+        node = site.find("meta", attrs=kwargs)
+        if not node:
+            return None
+
+        return node.get("content")
+
+    def get_game_id(self, url: str, site: BeautifulSoup) -> int:
+        game_id: Optional[int] = None
+
+        try:
+            # Headers: <meta name="itch:path" content="games/12345" />
+            itch_path = self.get_meta(site, name="itch:path")
+            if itch_path is not None:
+                # Its value should be "games/12345", so:
+                game_id = int(itch_path.split("/")[-1])
+        except ValueError:
+            pass
+
+        if game_id is None:
+            # I.ViewGame has the "id" key in its config
+            for script in site.find_all("script", type="text/javascript"):
+                script_src = script.text.strip()
+                marker = "I.ViewGame"
+                if marker in script_src:
+                    game_id = get_int_after_marker_in_json(script_src, marker, "id")
+                    break
+
+        if game_id is None:
+            # We have to hit the server again :(
+            data_url = url.rstrip('/') + "/data.json"
+            data_request = self.client.get(data_url, append_api_key=False)
+            if data_request.ok:
+                try:
+                    game_id = int(data_request.json().get("id"))
+                except ValueError:
+                    pass
+
+        if game_id is None:
+            raise ItchDownloadError(f"Could not get the Game ID for URL: {url}")
+
+        return game_id
+
+    def extract_metadata(self, game_id: int, url: str, site: BeautifulSoup) -> GameMetadata:
+        description: Optional[str] = self.get_meta(site, property="og:description")
+        if not description:
+            description = self.get_meta(site, name="description")
+
+        metadata = GameMetadata(
+            game_id=game_id,
+            title=site.find("h1", class_="game_title").text.strip(),
+            url=url,
+            cover_url=self.get_meta(site, property="og:image"),
+            description=description
+        )
+
+        TODO_KEYS = ['author', 'author_url', 'created_at', 'published_at']
+        TODO_rating_json: Optional[dict] = self.get_rating_json(site)
+
+        return metadata
+
+    def get_credentials(self, title: str, game_id: int) -> dict:
+        credentials = {}
+        if game_id in self.download_keys:
+            credentials['download_key_id'] = self.download_keys[game_id]
+            logging.debug("Got credentials for %s: %s", title, str(credentials))
+
+        return credentials
+
+    def download_file(self, upload_id: int, download_path: Optional[str], creds: dict) -> str:
+        """Performs a request to download a given upload by its ID, optionally saves the
+        file to the provided path and returns the final URL that was downloaded."""
+        try:
+            # No timeouts, chunked uploads, default retry strategy, should be all good?
+            with self.client.get(f"/uploads/{upload_id}/download", data=creds, stream=True) as r:
+                r.raise_for_status()
+
+                if download_path is not None:  # ...and it will be for external downloads.
+                    with tqdm.wrapattr(open(download_path, "wb"), "write",
+                                       miniters=1, desc=str(upload_id),
+                                       total=int(r.headers.get('content-length', 0))) as f:
+                        for chunk in r.iter_content(chunk_size=1048576):  # 1MB chunks
+                            f.write(chunk)
+
+                return r.url
+        except HTTPError as e:
+            raise ItchDownloadError(f"Unrecoverable download error: {e}")
+
+    def download(self, url: str, skip_downloaded: bool = True):
+        match = re.match(ITCH_GAME_URL_REGEX, url)
+        if not match:
+            raise ItchDownloadError(f"Game URL is invalid: {url} - please file a new issue.")
+
+        author, game = match['author'], match['game']
+
+        download_path = os.path.join(self.download_to, author, game)
+        os.makedirs(download_path, exist_ok=True)
+
+        paths: Dict[str, str] = {k: os.path.join(download_path, v) for k, v in TARGET_PATHS.items()}
+
+        if os.path.exists(paths['metadata']) and skip_downloaded:
+            # As metadata is the final file we write, all the files
+            # should already be downloaded at this point.
+            logging.info("Skipping already-downloaded game for URL: %s", url)
+            return
+
+        logging.info("Downloading %s", url)
+        r = self.client.get(url, append_api_key=False)
+        if not r.ok:
+            raise ItchDownloadError(f"Could not download the game site for {url}")
+
+        site = BeautifulSoup(r.text, features="lxml")
+        game_id = self.get_game_id(url, site)
+
+        metadata = self.extract_metadata(game_id, url, site)
+        title = metadata['title'] or game
+
+        credentials = self.get_credentials(title, game_id)
+        game_uploads_req = self.client.get(f"/games/{game_id}/uploads", data=credentials, timeout=15)
+        if not game_uploads_req.ok:
+            raise ItchDownloadError(f"Could not fetch game uploads for {title}: {game_uploads_req.text}")
+
+        game_uploads = game_uploads_req.json()['uploads']
+        print(f"Found {len(game_uploads)} upload(s)")
+        logging.debug(str(game_uploads))
+
+        external_urls = []
+        errors = []
+
+        try:
+            os.makedirs(paths['files'], exist_ok=True)
+            for upload in tqdm(game_uploads, desc=title):
+                upload_id = upload['id']
+                file_name = upload['filename']
+                file_size = upload['size']
+                upload_is_external = upload['storage'] == 'external'
+
+                print(f"Downloading '{file_name}' ({upload_id}), {file_size} bytes...")
+                target_path = None if upload_is_external else os.path.join(paths['files'], file_name)
+
+                try:
+                    target_url = self.download_file(upload_id, target_path, credentials)
+                except ItchDownloadError as e:
+                    errors.append(f"Download failed for upload {upload}: {e}")
+                    continue
+
+                if upload_is_external:
+                    logging.info("Found external download URL for %s: %s", target_url)
+                    external_urls.append(target_url)
+
+                try:
+                    actual_file_size = os.stat(target_path).st_size
+                    if actual_file_size != file_size:
+                        errors.append(f"File size is {actual_file_size}, but expected {file_size} for upload {upload}")
+                except FileNotFoundError:
+                    errors.append(f"Downloaded file not found for upload {upload}")
+
+            logging.info("Done downloading files for %s", title)
+        except Exception as e:
+            error = f"Download failed for {title}: {e}"
+            logging.exception(error)
+            errors.append(error)
+
+        metadata['errors'] = errors
+        metadata['external_downloads'] = external_urls
+
+        if len(external_urls) > 0:
+            print(f"WARNING: Game {title} has external download URLs: {external_urls}")
+
+        # TODO: Screenshots and site assets
+        with open(paths['site'], 'w') as f:
+            f.write(site.prettify())
+
+        with open(paths['metadata'], 'w') as f:
+            json.dump(metadata, f)
+
+        logging.info("Finished job %s (%s)", url, title)
 
 
 def drive_downloads(jobs: List[str], download_to: str, api_key: str, keys: Dict[int, str], parallel: int = 1):
     downloader = GameDownloader(download_to, api_key, keys)
 
     if parallel > 1:
-        thread_map(downloader.download, jobs, max_workers=parallel, )
+        results = thread_map(downloader.download, jobs, desc="Games", max_workers=parallel)
     else:
-        for job in tqdm(jobs):
-            downloader.download(job)
+        results = [downloader.download(job) for job in tqdm(jobs, desc="Games")]
+
+    print(results)
