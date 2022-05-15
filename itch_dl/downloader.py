@@ -23,6 +23,14 @@ TARGET_PATHS = {
 }
 
 
+class DownloadResult:
+    def __init__(self, url: str, success: bool, errors, external_urls: Optional[List[str]] = None):
+        self.url = url
+        self.success = success
+        self.errors = errors
+        self.external_urls = external_urls
+
+
 class GameMetadata(TypedDict, total=False):
     game_id: int
     title: str
@@ -151,7 +159,7 @@ class GameDownloader:
     def download(self, url: str, skip_downloaded: bool = True):
         match = re.match(ITCH_GAME_URL_REGEX, url)
         if not match:
-            raise ItchDownloadError(f"Game URL is invalid: {url} - please file a new issue.")
+            return DownloadResult(url, False, [f"Game URL is invalid: {url} - please file a new issue."])
 
         author, game = match['author'], match['game']
 
@@ -164,40 +172,49 @@ class GameDownloader:
             # As metadata is the final file we write, all the files
             # should already be downloaded at this point.
             logging.info("Skipping already-downloaded game for URL: %s", url)
-            return
+            return DownloadResult(url, True, [f"Game already downloaded."])
 
-        logging.info("Downloading %s", url)
-        r = self.client.get(url, append_api_key=False)
-        if not r.ok:
-            raise ItchDownloadError(f"Could not download the game site for {url}")
+        try:
+            logging.info("Downloading %s", url)
+            r = self.client.get(url, append_api_key=False)
+            r.raise_for_status()
+        except Exception as e:
+            return DownloadResult(url, False, [f"Could not download the game site for {url}: {e}"])
 
         site = BeautifulSoup(r.text, features="lxml")
-        game_id = self.get_game_id(url, site)
-
-        metadata = self.extract_metadata(game_id, url, site)
-        title = metadata['title'] or game
+        try:
+            game_id = self.get_game_id(url, site)
+            metadata = self.extract_metadata(game_id, url, site)
+            title = metadata['title'] or game
+        except ItchDownloadError as e:
+            return DownloadResult(url, False, [str(e)])
 
         credentials = self.get_credentials(title, game_id)
-        game_uploads_req = self.client.get(f"/games/{game_id}/uploads", data=credentials, timeout=15)
-        if not game_uploads_req.ok:
-            raise ItchDownloadError(f"Could not fetch game uploads for {title}: {game_uploads_req.text}")
+        try:
+            game_uploads_req = self.client.get(f"/games/{game_id}/uploads", data=credentials, timeout=15)
+            game_uploads_req.raise_for_status()
+        except Exception as e:
+            return DownloadResult(url, False, [f"Could not fetch game uploads for {title}: {e}"])
 
         game_uploads = game_uploads_req.json()['uploads']
-        print(f"Found {len(game_uploads)} upload(s)")
-        logging.debug(str(game_uploads))
+        logging.debug("Found %d upload(s): %s", len(game_uploads), str(game_uploads))
 
         external_urls = []
         errors = []
 
         try:
             os.makedirs(paths['files'], exist_ok=True)
-            for upload in tqdm(game_uploads, desc=title):
+            for upload in game_uploads:
+                if any([key not in upload for key in ('id', 'filename', 'size', 'storage')]):
+                    errors.append(f"Upload metadata incomplete: {upload}")
+                    continue
+
                 upload_id = upload['id']
                 file_name = upload['filename']
                 file_size = upload['size']
                 upload_is_external = upload['storage'] == 'external'
 
-                print(f"Downloading '{file_name}' ({upload_id}), {file_size} bytes...")
+                logging.debug("Downloading '%s' (%d), %d bytes...", file_name, upload_id, file_size)
                 target_path = None if upload_is_external else os.path.join(paths['files'], file_name)
 
                 try:
@@ -207,7 +224,7 @@ class GameDownloader:
                     continue
 
                 if upload_is_external:
-                    logging.info("Found external download URL for %s: %s", target_url)
+                    logging.debug("Found external download URL for %s: %s", target_url)
                     external_urls.append(target_url)
 
                 try:
@@ -217,17 +234,15 @@ class GameDownloader:
                 except FileNotFoundError:
                     errors.append(f"Downloaded file not found for upload {upload}")
 
-            logging.info("Done downloading files for %s", title)
+            logging.debug("Done downloading files for %s", title)
         except Exception as e:
-            error = f"Download failed for {title}: {e}"
-            logging.exception(error)
-            errors.append(error)
+            errors.append(f"Download failed for {title}: {e}")
 
         metadata['errors'] = errors
         metadata['external_downloads'] = external_urls
 
         if len(external_urls) > 0:
-            print(f"WARNING: Game {title} has external download URLs: {external_urls}")
+            logging.warning(f"Game {title} has external download URLs: {external_urls}")
 
         # TODO: Screenshots and site assets
         with open(paths['site'], 'w') as f:
@@ -236,15 +251,37 @@ class GameDownloader:
         with open(paths['metadata'], 'w') as f:
             json.dump(metadata, f)
 
+        if len(errors) > 0:
+            logging.error(f"Game {title} has download errors: {errors}")
+
         logging.info("Finished job %s (%s)", url, title)
+        return DownloadResult(url, True, errors, external_urls)
 
 
 def drive_downloads(jobs: List[str], download_to: str, api_key: str, keys: Dict[int, str], parallel: int = 1):
     downloader = GameDownloader(download_to, api_key, keys)
+    tqdm_args = {
+        "desc": "Games",
+        "unit": "game",
+    }
 
     if parallel > 1:
-        results = thread_map(downloader.download, jobs, desc="Games", max_workers=parallel)
+        results = thread_map(downloader.download, jobs, max_workers=parallel, **tqdm_args)
     else:
-        results = [downloader.download(job) for job in tqdm(jobs, desc="Games")]
+        results = [downloader.download(job) for job in tqdm(jobs, **tqdm_args)]
 
-    print(results)
+    print("Download complete!")
+    for result in results:
+        if result.success and len(result.errors) == 0 and len(result.external_urls):
+            continue
+
+        if result.success:
+            print(f"\nNotes for {result.url}:")
+        else:
+            print(f"\nDownload failed for {result.url}:")
+
+        for error in result.errors:
+            print(f"- {error}")
+
+        for ext_url in result.external_urls:
+            print(f"- External download URL (download manually!): {ext_url}")
