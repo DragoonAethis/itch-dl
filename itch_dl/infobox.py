@@ -25,6 +25,7 @@ class InfoboxMetadata(TypedDict, total=False):
     inputs: Dict[str, str]  # Links
     links: Dict[str, str]  # Links
     mentions: Dict[str, str]  # Links
+    category: Dict[str, str]  # Links
 
 
 def parse_date_block(td: BeautifulSoup) -> Optional[datetime]:
@@ -94,6 +95,8 @@ def parse_tr(name: str, content: BeautifulSoup) -> Optional[Tuple[str, Any]]:
         return "links", parse_links(content)
     elif name == "Mentions":
         return "mentions", parse_links(content)
+    elif name == "Category":
+        return "category", parse_links(content)
     else:
         # Oops, you need to extend this with something new. Sorry.
         # Make sure to add the block name to InfoboxMetadata as well!
