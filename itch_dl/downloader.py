@@ -258,16 +258,19 @@ class GameDownloader:
         try:
             os.makedirs(paths['files'], exist_ok=True)
             for upload in game_uploads:
-                if any([key not in upload for key in ('id', 'filename', 'size', 'storage')]):
+                if any([key not in upload for key in ('id', 'filename', 'storage')]):
                     errors.append(f"Upload metadata incomplete: {upload}")
                     continue
 
                 upload_id = upload['id']
                 file_name = upload['filename']
-                file_size = upload['size']
+                file_size = upload.get('size')
                 upload_is_external = upload['storage'] == 'external'
 
-                logging.debug("Downloading '%s' (%d), %d bytes...", file_name, upload_id, file_size)
+                logging.debug("Downloading '%s' (%d), %s",
+                    file_name, upload_id,
+                    f"{file_size} bytes" if file_size is not None else "unknown size")
+
                 target_path = None if upload_is_external else os.path.join(paths['files'], file_name)
 
                 try:
@@ -281,9 +284,9 @@ class GameDownloader:
                     external_urls.append(target_url)
 
                 try:
-                    actual_file_size = os.stat(target_path).st_size
-                    if actual_file_size != file_size:
-                        errors.append(f"File size is {actual_file_size}, but expected {file_size} for upload {upload}")
+                    downloaded_file_size = os.stat(target_path).st_size
+                    if file_size is not None and downloaded_file_size != file_size:
+                        errors.append(f"File size is {downloaded_file_size}, but expected {file_size} for upload {upload}")
                 except FileNotFoundError:
                     errors.append(f"Downloaded file not found for upload {upload}")
 
