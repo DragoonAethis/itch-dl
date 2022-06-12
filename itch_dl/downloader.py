@@ -45,9 +45,9 @@ class GameMetadata(TypedDict, total=False):
     author: str
     author_url: str
 
-    cover_url: str
+    cover_url: Optional[str]
     screenshots: List[str]
-    description: str
+    description: Optional[str]
 
     rating: Dict[str, Union[float, int]]
     extra: InfoboxMetadata
@@ -125,7 +125,7 @@ class GameDownloader:
 
     def extract_metadata(self, game_id: int, url: str, site: BeautifulSoup) -> GameMetadata:
         rating_json: Optional[dict] = self.get_rating_json(site)
-        title = rating_json.get("name")
+        title = rating_json.get("name") if rating_json else None
 
         description: Optional[str] = self.get_meta(site, property="og:description")
         if not description:
@@ -150,9 +150,8 @@ class GameDownloader:
             infobox = parse_infobox(infobox_div)
             for dt in ('created_at', 'updated_at', 'released_at', 'published_at'):
                 if dt in infobox:
-                    # noinspection PyTypedDict
-                    metadata[dt] = infobox[dt].isoformat()
-                    del infobox[dt]
+                    metadata[dt] = infobox[dt].isoformat()  # noqa (non-literal TypedDict keys)
+                    del infobox[dt]  # noqa (non-literal TypedDict keys)
 
             if 'author' in infobox:
                 metadata['author'] = infobox['author']['author']
@@ -166,7 +165,7 @@ class GameDownloader:
 
             metadata['extra'] = infobox
 
-        agg_rating = rating_json.get('aggregateRating')
+        agg_rating = rating_json.get('aggregateRating') if rating_json else None
         if agg_rating:
             try:
                 metadata['rating'] = {
@@ -269,8 +268,8 @@ class GameDownloader:
                 upload_is_external = upload['storage'] == 'external'
 
                 logging.debug("Downloading '%s' (%d), %s",
-                    file_name, upload_id,
-                    f"{file_size} bytes" if file_size is not None else "unknown size")
+                              file_name, upload_id,
+                              f"{file_size} bytes" if file_size is not None else "unknown size")
 
                 target_path = None if upload_is_external else os.path.join(paths['files'], file_name)
 
@@ -286,8 +285,8 @@ class GameDownloader:
 
                 try:
                     downloaded_file_size = os.stat(target_path).st_size
-                    if file_size is not None and downloaded_file_size != file_size:
-                        errors.append(f"File size is {downloaded_file_size}, but expected {file_size} for upload {upload}")
+                    if target_path is not None and file_size is not None and downloaded_file_size != file_size:
+                        errors.append(f"File size is {downloaded_file_size}, expected {file_size} for upload {upload}")
                 except FileNotFoundError:
                     errors.append(f"Downloaded file not found for upload {upload}")
 
@@ -314,9 +313,9 @@ class GameDownloader:
                 except Exception as e:
                     errors.append(f"Screenshot download failed (this is not fatal): {e}")
 
-        if metadata.get('cover_url'):
+        cover_url = metadata.get('cover_url')
+        if cover_url:
             try:
-                cover_url = metadata['cover_url']
                 self.download_file(cover_url, paths['cover'] + os.path.splitext(cover_url)[-1], credentials={})
             except Exception as e:
                 errors.append(f"Cover art download failed (this is not fatal): {e}")

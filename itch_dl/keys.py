@@ -6,7 +6,7 @@ from .api import ItchApiClient
 
 def get_download_keys(client: ItchApiClient) -> Dict[int, str]:
     logging.info("Fetching all download keys...")
-    download_keys = {}
+    download_keys: Dict[int, str] = {}
     page = 1
 
     while True:

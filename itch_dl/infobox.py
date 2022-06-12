@@ -103,7 +103,7 @@ def parse_tr(name: str, content: BeautifulSoup) -> Optional[Tuple[str, Any]]:
         raise NotImplementedError(f"Unknown infobox block name '{name}' - please file a new itch-dl issue.")
 
 
-def parse_infobox(infobox: BeautifulSoup) -> dict:
+def parse_infobox(infobox: BeautifulSoup) -> InfoboxMetadata:
     """Feed it <div class="game_info_panel_widget">, out goes a dict
     of parsed metadata blocks."""
     meta = InfoboxMetadata()
@@ -118,7 +118,6 @@ def parse_infobox(infobox: BeautifulSoup) -> dict:
 
         parsed_block = parse_tr(name, content_td)
         if parsed_block:
-            # noinspection PyTypedDict
-            meta[parsed_block[0]] = parsed_block[1]
+            meta[parsed_block[0]] = parsed_block[1]  # noqa (non-literal TypedDict keys)
 
     return meta

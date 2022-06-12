@@ -1,5 +1,6 @@
 from typing import Optional
 
+import requests
 from requests import Session
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -27,7 +28,7 @@ class ItchApiClient:
         self.requests.mount("https://", adapter)
         self.requests.mount("http://", adapter)
 
-    def get(self, endpoint: str, append_api_key: bool = True, **kwargs):
+    def get(self, endpoint: str, append_api_key: bool = True, **kwargs) -> requests.Response:
         if append_api_key:
             params = kwargs.get('data') or {}
 

@@ -2,7 +2,7 @@ import json
 import os.path
 import logging
 import urllib.parse
-from typing import List, Optional
+from typing import List, Set, Optional
 
 from bs4 import BeautifulSoup
 
@@ -49,7 +49,7 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> List[str]:
     .xml?page=N suffix and iterate until we've caught 'em all.
     """
     page = 1
-    found_urls = set()
+    found_urls: Set[str] = set()
     logging.info(f"Scraping game URLs from RSS feeds for %s", url)
 
     while True:
@@ -189,3 +189,5 @@ def get_jobs_for_url_or_path(path_or_url: str, settings: Settings) -> List[str]:
         return get_jobs_for_itch_url(path_or_url, client)
     elif os.path.isfile(path_or_url):
         return get_jobs_for_path(path_or_url)
+    else:
+        raise NotImplementedError(f"Cannot handle path or URL: {path_or_url}")
