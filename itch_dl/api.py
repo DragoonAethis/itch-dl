@@ -8,11 +8,12 @@ from .consts import ITCH_API
 
 
 class ItchApiClient:
-    def __init__(self, api_key: str, base_url: Optional[str] = None):
+    def __init__(self, api_key: str, user_agent: str, base_url: Optional[str] = None):
         self.base_url = base_url or ITCH_API
         self.api_key = api_key
 
         self.requests = Session()
+        self.requests.headers['User-Agent'] = user_agent
 
         retry_strategy = Retry(
             total=5,

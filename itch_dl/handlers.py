@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from .api import ItchApiClient
 from .utils import ItchDownloadError, get_int_after_marker_in_json
 from .consts import ITCH_BASE, ITCH_URL, ITCH_BROWSER_TYPES
+from .config import Settings
 
 
 def get_jobs_for_game_jam_json(game_jam_json: dict) -> List[str]:
@@ -175,7 +176,7 @@ def get_jobs_for_path(path: str) -> List[str]:
     raise ValueError(f"File format is unknown - cannot read URLs to download.")
 
 
-def get_jobs_for_url_or_path(path_or_url: str, api_key: str) -> List[str]:
+def get_jobs_for_url_or_path(path_or_url: str, settings: Settings) -> List[str]:
     """Returns a list of Game URLs for a given itch.io URL or file."""
     path_or_url = path_or_url.strip()
 
@@ -184,7 +185,7 @@ def get_jobs_for_url_or_path(path_or_url: str, api_key: str) -> List[str]:
         path_or_url = "https://" + path_or_url[7:]
 
     if path_or_url.startswith("https://"):
-        client = ItchApiClient(api_key)
+        client = ItchApiClient(settings.api_key, settings.user_agent)
         return get_jobs_for_itch_url(path_or_url, client)
     elif os.path.isfile(path_or_url):
         return get_jobs_for_path(path_or_url)

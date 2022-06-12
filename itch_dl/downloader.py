@@ -14,6 +14,7 @@ from tqdm.contrib.concurrent import thread_map
 from .api import ItchApiClient
 from .utils import ItchDownloadError, get_int_after_marker_in_json
 from .consts import ITCH_GAME_URL_REGEX
+from .config import Settings
 from .infobox import parse_infobox, InfoboxMetadata
 
 TARGET_PATHS = {
@@ -58,12 +59,12 @@ class GameMetadata(TypedDict, total=False):
 
 
 class GameDownloader:
-    def __init__(self, download_to: str, mirror_web: bool, api_key: str, keys: Dict[int, str]):
+    def __init__(self, download_to: str, mirror_web: bool, settings: Settings, keys: Dict[int, str]):
         self.download_to = download_to
         self.mirror_web = mirror_web
 
         self.download_keys = keys
-        self.client = ItchApiClient(api_key)
+        self.client = ItchApiClient(settings.api_key, settings.user_agent)
 
     @staticmethod
     def get_rating_json(site) -> Optional[dict]:
@@ -337,11 +338,11 @@ def drive_downloads(
         jobs: List[str],
         download_to: str,
         mirror_web: bool,
-        api_key: str,
+        settings: Settings,
         keys: Dict[int, str],
         parallel: int = 1
 ):
-    downloader = GameDownloader(download_to, mirror_web, api_key, keys)
+    downloader = GameDownloader(download_to, mirror_web, settings, keys)
     tqdm_args = {
         "desc": "Games",
         "unit": "game",

@@ -29,7 +29,8 @@ urllib3 = "^1.26.9"
 requests = "^2.27.1"
 python-slugify = "^6.1.2"
 beautifulsoup4 = "^4.11.1"
-lxml = "^4.8.0"
+lxml = "^4.9.0"
+pydantic = "^1.9.1"
 
 [tool.poetry.scripts]
 itch-dl = "itch_dl.cli:run"
