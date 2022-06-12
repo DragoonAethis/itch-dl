@@ -11,9 +11,11 @@ Bulk download games from [itch.io](https://itch.io/).
 
 - Log into itch.io with the account you'd like to use for downloading.
 - Generate [a new API key](https://itch.io/user/settings/api-keys) on your user account page.
-- Check out which flags you can toggle: `itch-dl --help`
-- Run the downloader: `itch-dl --api-key <KEY> https://itch.io/jam/yourjamhere`
+- Optional: Save the API key in the [itch-dl configuration file](https://github.com/DragoonAethis/itch-dl/wiki/Configuration-Files).
+- Run the downloader: `itch-dl https://itch.io/jam/yourjamhere` (add `--api-key <KEY>` if you did not save the API key).
 - Wait. This is going to take a while.
+
+More arguments are available - check them out with `itch-dl --help`.
 
 The downloader is able to grab more or less everything you can download via the itch app.
 
