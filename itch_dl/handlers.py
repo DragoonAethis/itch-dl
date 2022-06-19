@@ -91,7 +91,7 @@ def get_jobs_for_bundle_json(bundle_json: dict) -> List[str]:
 
 
 def get_bundle_json(bundle_id: str, client: ItchApiClient) -> dict:
-    r = client.get(f"{ITCH_URL}/bundle/{bundle_id}/games.json")
+    r = client.get(f"{ITCH_URL}/bundle/{bundle_id}/games.json", append_api_key=False)
     if not r.ok:
         raise ItchDownloadError(f"Could not download game list: {r.status_code} {r.reason}")
 
