@@ -150,7 +150,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
 
 def get_jobs_for_path(path: str) -> List[str]:
     try:  # Game Jam Entries JSON?
-        with open(path) as f:
+        with open(path, "rb") as f:
             json_data = json.load(f)
 
         if not isinstance(json_data, dict):
