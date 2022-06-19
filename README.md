@@ -2,7 +2,7 @@
 
 Bulk download games from [itch.io](https://itch.io/).
 
-- Can download game jams, browse pages (popular, newest, browse by tag...) and individual games.
+- Can download game jams, browse pages (popular, newest, browse by tag...), bundles and individual games.
 - Requires Python 3.8+, grab it from PyPI: `pip install itch-dl`
 - For development, use [Poetry](https://python-poetry.org/).
 
@@ -19,9 +19,9 @@ More arguments are available - check them out with `itch-dl --help`.
 
 The downloader is able to grab more or less everything you can download via the itch app.
 
-The input URL can be any "Browse" page (top, popular, newest, filtered by tags, etc) or any
-game jam. The input can also be a path to a itch.io JSON file with game jam entries, or just
-a list of itch.io game URLs (not browse/jam pages!) to download.
+The input URL can be any "Browse" page (top, popular, newest, filtered by tags, etc), any
+game jam or any bundle. The input can also be a path to a itch.io JSON file with game jam
+entries, or just a list of itch.io game URLs (not browse pages!) to download.
 
 **It's expected that the downloader output will not be complete** - logs are stupidly verbose
 and it prints a report on failed downloads and external URLs (links to files that are not on

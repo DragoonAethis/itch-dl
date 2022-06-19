@@ -15,7 +15,7 @@ logging.getLogger().setLevel(logging.INFO)
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Bulk download stuff from Itch.io.")
     parser.add_argument("url_or_path",
-                        help="itch.io URL or path to a game jam entries.json file")
+                        help="itch.io URL or path to either a game jam entries.json file or bundle games.json file")
     parser.add_argument("--api-key", metavar="key", default=None,
                         help="itch.io API key - https://itch.io/user/settings/api-keys")
     parser.add_argument("--profile", metavar="profile", default=None,
