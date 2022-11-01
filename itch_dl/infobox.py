@@ -75,6 +75,8 @@ def parse_tr(name: str, content: BeautifulSoup) -> Optional[Tuple[str, Any]]:
         return "tools", parse_links(content)
     elif name == "License":
         return "license", parse_links(content)
+    elif name == "Code license":
+        return "code_license", parse_links(content)
     elif name == "Asset license":
         return "asset_license", parse_links(content)
     elif name == "Tags":
