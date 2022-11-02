@@ -83,6 +83,21 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> List[str]:
     return list(found_urls)
 
 
+def get_jobs_for_bundle_json(bundle_json: dict) -> List[str]:
+    if 'games' not in bundle_json:
+        raise Exception("Provided JSON is not a valid itch.io bundle JSON.")
+
+    return [g['url'] for g in bundle_json['games']]
+
+
+def get_bundle_json(bundle_id: str, client: ItchApiClient) -> dict:
+    r = client.get(f"{ITCH_URL}/bundle/{bundle_id}/games.json", append_api_key=False)
+    if not r.ok:
+        raise ItchDownloadError(f"Could not download game list: {r.status_code} {r.reason}")
+
+    return r.json()
+
+
 def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
     if url.startswith("http://"):
         logging.info("HTTP link provided, upgrading to HTTPS")
@@ -116,7 +131,8 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
             return get_jobs_for_browse_url(clean_browse_url, client)
 
         elif site in ("b", "bundle"):  # Bundles
-            raise NotImplementedError("itch-dl cannot download bundles yet.")
+            bundle_json = get_bundle_json(url_path_parts[1], client)
+            return get_jobs_for_bundle_json(bundle_json)
 
         elif site in ("j", "jobs"):  # Jobs...
             raise ValueError("itch-dl cannot download a job.")
@@ -149,7 +165,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
 
 
 def get_jobs_for_path(path: str) -> List[str]:
-    try:  # Game Jam Entries JSON?
+    try:  # Game Jam Entries JSON or Bundle Games JSON?
         with open(path, "rb") as f:
             json_data = json.load(f)
 
@@ -159,6 +175,10 @@ def get_jobs_for_path(path: str) -> List[str]:
         if 'jam_games' in json_data:
             logging.info("Parsing provided file as a Game Jam Entries JSON...")
             return get_jobs_for_game_jam_json(json_data)
+
+        if 'games' in json_data:
+            logging.info("Parsing provided file as Bundle Games JSON...")
+            return get_jobs_for_bundle_json(json_data)
     except json.JSONDecodeError:
         pass  # Not a valid JSON, okay...
 
