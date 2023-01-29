@@ -1,9 +1,11 @@
 # itch-dl
 
+[![PyPI](https://img.shields.io/pypi/v/itch-dl)](https://pypi.org/project/itch-dl/)
+
 Bulk download games from [itch.io](https://itch.io/).
 
 - Can download game jams, browse pages (popular, newest, browse by tag...) and individual games.
-- Requires Python 3.8+, grab it from PyPI: `pip install itch-dl`
+- Requires Python 3.8+, grab it from [PyPI](https://pypi.org/project/itch-dl/): `pip install itch-dl`
 - For development, use [Poetry](https://python-poetry.org/).
 
 
