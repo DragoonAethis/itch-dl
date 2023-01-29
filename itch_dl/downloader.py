@@ -191,7 +191,7 @@ class GameDownloader:
         file to the provided path and returns the final URL that was downloaded."""
         try:
             # No timeouts, chunked uploads, default retry strategy, should be all good?
-            with self.client.get(url, data=credentials, stream=True) as r:
+            with self.client.get(url, data=credentials, stream=True, guess_encoding=True) as r:
                 r.raise_for_status()
 
                 if download_path is not None:  # ...and it will be for external downloads.
@@ -320,8 +320,8 @@ class GameDownloader:
             except Exception as e:
                 errors.append(f"Cover art download failed (this is not fatal): {e}")
 
-        with open(paths['site'], 'w') as f:
-            f.write(site.prettify())
+        with open(paths['site'], 'wb') as f:
+            f.write(site.prettify(encoding='utf-8'))
 
         with open(paths['metadata'], 'w') as f:
             json.dump(metadata, f, indent=4)
