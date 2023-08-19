@@ -10,6 +10,7 @@ cached_owned_keys: Optional[Tuple[Dict[int, str], List[str]]] = None
 def get_owned_keys(client: ItchApiClient) -> Tuple[Dict[int, str], List[str]]:
     global cached_owned_keys
     if cached_owned_keys is not None:
+        logging.debug(f"Fetched {len(cached_owned_keys[0])} download keys from cache.")
         return cached_owned_keys
 
     logging.info("Fetching all download keys...")
