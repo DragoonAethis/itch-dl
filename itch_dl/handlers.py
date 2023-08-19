@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 from .api import ItchApiClient
 from .utils import ItchDownloadError, get_int_after_marker_in_json
-from .consts import ITCH_BASE, ITCH_URL, ITCH_BROWSER_TYPES
+from .consts import ITCH_API, ITCH_BASE, ITCH_URL, ITCH_BROWSER_TYPES
 from .config import Settings
 from .keys import get_owned_games
 
@@ -84,6 +84,38 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> List[str]:
     return list(found_urls)
 
 
+def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> dict:
+    page = 1
+    found_urls: Set[str] = set()
+
+    while True:
+        logging.info(f"Downloading page {page} (found {len(found_urls)} URLs total)")
+        r = client.get(url, data={"page": page}, timeout=15)
+        if not r.ok:
+            logging.info("Collection page %d returned %d %s, finished.",
+                         page, r.status_code, r.reason)
+            break
+
+        data = r.json()
+
+        if len(data["collection_games"]) < 1:
+            logging.info("No more items, finished.")
+            break
+
+        for item in data["collection_games"]:
+            found_urls.add(item["game"]["url"])
+
+        if len(data["collection_games"]) == data["per_page"]:
+            page += 1
+        else:
+            break
+
+    if len(found_urls) == 0:
+        raise ItchDownloadError("No game URLs found to download.")
+
+    return list(found_urls)
+
+
 def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
     if url.startswith("http://"):
         logging.info("HTTP link provided, upgrading to HTTPS")
@@ -135,6 +167,11 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
 
         elif site == "my-purchases":  # User Purchased Games
             return get_owned_games(client)
+
+        elif site == "c":  # Collections
+            collection_id = url_path_parts[1]
+            clean_collection_url = f"{ITCH_API}/collections/{collection_id}/collection-games"
+            return get_jobs_for_collection_json(clean_collection_url, client)
 
         # Something else?
         raise NotImplementedError(f"itch-dl does not understand \"{site}\" URLs. Please file a new issue.")
