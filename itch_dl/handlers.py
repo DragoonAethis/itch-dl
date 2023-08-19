@@ -10,6 +10,7 @@ from .api import ItchApiClient
 from .utils import ItchDownloadError, get_int_after_marker_in_json
 from .consts import ITCH_BASE, ITCH_URL, ITCH_BROWSER_TYPES
 from .config import Settings
+from .keys import get_owned_games
 
 
 def get_jobs_for_game_jam_json(game_jam_json: dict) -> List[str]:
@@ -131,6 +132,9 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
                 return get_jobs_for_itch_url(f"https://{username}.{ITCH_BASE}", client)
 
             raise ValueError("itch-dl expects a username in profile links.")
+
+        elif site == "my-purchases":  # User Purchased Games
+            return get_owned_games(client)
 
         # Something else?
         raise NotImplementedError(f"itch-dl does not understand \"{site}\" URLs. Please file a new issue.")
