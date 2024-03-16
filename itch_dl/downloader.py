@@ -354,7 +354,7 @@ def drive_downloads(
 
     print("Download complete!")
     for result in results:
-        if result.success and len(result.errors) == 0 and len(result.external_urls):
+        if not result.errors and not result.external_urls:
             continue
 
         if result.success:
