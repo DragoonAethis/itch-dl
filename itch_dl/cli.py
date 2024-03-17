@@ -13,6 +13,7 @@ logging.getLogger().setLevel(logging.INFO)
 
 
 def parse_args() -> argparse.Namespace:
+    # fmt: off
     parser = argparse.ArgumentParser(description="Bulk download stuff from Itch.io.")
     parser.add_argument("url_or_path",
                         help="itch.io URL or path to a game jam entries.json file")
@@ -31,6 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--verbose", action="store_true",
                         help="print verbose logs")
     return parser.parse_args()
+    # fmt: on
 
 
 def apply_args_on_settings(args: argparse.Namespace, settings: Settings):
@@ -47,15 +49,19 @@ def run() -> int:
     apply_args_on_settings(args, settings)
 
     if not settings.api_key:
-        exit("You did not provide an API key which itch-dl requires.\n"
-             "See https://github.com/DragoonAethis/itch-dl/wiki/API-Keys for more info.")
+        exit(
+            "You did not provide an API key which itch-dl requires.\n"
+            "See https://github.com/DragoonAethis/itch-dl/wiki/API-Keys for more info."
+        )
 
     # Check API key validity:
     client = ItchApiClient(settings.api_key, settings.user_agent)
     profile_req = client.get("/profile")
     if not profile_req.ok:
-        exit(f"Provided API key appears to be invalid: {profile_req.text}\n"
-             "See https://github.com/DragoonAethis/itch-dl/wiki/API-Keys for more info.")
+        exit(
+            f"Provided API key appears to be invalid: {profile_req.text}\n"
+            "See https://github.com/DragoonAethis/itch-dl/wiki/API-Keys for more info."
+        )
 
     jobs = get_jobs_for_url_or_path(args.url_or_path, settings)
     jobs = list(set(jobs))  # Deduplicate, just in case...

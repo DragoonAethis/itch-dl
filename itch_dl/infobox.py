@@ -30,10 +30,10 @@ class InfoboxMetadata(TypedDict, total=False):
 
 def parse_date_block(td: BeautifulSoup) -> Optional[datetime]:
     abbr = td.find("abbr")
-    if not abbr or 'title' not in abbr.attrs:
+    if not abbr or "title" not in abbr.attrs:
         return None
 
-    date_str, time_str = abbr['title'].split('@')
+    date_str, time_str = abbr["title"].split("@")
     date = datetime.strptime(date_str.strip(), "%d %B %Y")
     time = datetime.strptime(time_str.strip(), "%H:%M UTC")
     return datetime(date.year, date.month, date.day, time.hour, time.minute)
@@ -42,7 +42,7 @@ def parse_date_block(td: BeautifulSoup) -> Optional[datetime]:
 def parse_links(td: BeautifulSoup) -> Dict[str, str]:
     """Parses blocks of comma-separated <a> blocks, returns a dict
     of link text -> URL it points at."""
-    return {link.text.strip(): link['href'] for link in td.find_all("a")}
+    return {link.text.strip(): link["href"] for link in td.find_all("a")}
 
 
 def parse_text_from_links(td: BeautifulSoup) -> List[str]:

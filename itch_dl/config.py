@@ -13,6 +13,7 @@ from . import __version__
 class Settings(BaseModel):
     """Available settings for itch-dl. Make sure all of them
     have default values, as the config file may not exist."""
+
     api_key: Optional[str] = None
     user_agent: str = f"python-requests/{requests.__version__} itch-dl/{__version__}"
 
@@ -22,11 +23,11 @@ def create_and_get_config_path() -> str:
     location for the current OS. The directory may not exist."""
     system = platform.system()
     if system == "Linux":
-        base_path = os.environ.get('XDG_CONFIG_HOME') or os.path.expanduser('~/.config/')
+        base_path = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config/")
     elif system == "Darwin":
-        base_path = os.path.expanduser('~/Library/Application Support/')
+        base_path = os.path.expanduser("~/Library/Application Support/")
     elif system == "Windows":
-        base_path = os.environ.get('APPDATA') or os.path.expanduser('~/AppData/Roaming/')
+        base_path = os.environ.get("APPDATA") or os.path.expanduser("~/AppData/Roaming/")
     else:
         raise NotImplementedError(f"Unknown platform: {system}")
 

@@ -14,13 +14,13 @@ class ItchApiClient:
         self.api_key = api_key
 
         self.requests = Session()
-        self.requests.headers['User-Agent'] = user_agent
+        self.requests.headers["User-Agent"] = user_agent
 
         retry_strategy = Retry(
             total=5,
             backoff_factor=10,
             allowed_methods=["HEAD", "GET"],
-            status_forcelist=[429, 500, 502, 503, 504]
+            status_forcelist=[429, 500, 502, 503, 504],
         )
 
         # No timeouts - set them explicitly on API calls below!
@@ -29,11 +29,11 @@ class ItchApiClient:
         self.requests.mount("http://", adapter)
 
     def get(
-            self,
-            endpoint: str,
-            append_api_key: bool = True,
-            guess_encoding: bool = False,
-            **kwargs
+        self,
+        endpoint: str,
+        append_api_key: bool = True,
+        guess_encoding: bool = False,
+        **kwargs,
     ) -> requests.Response:
         """Wrapper around `requests.get`.
 
@@ -42,12 +42,12 @@ class ItchApiClient:
         :param guess_encoding: Let requests guess the response encoding.
         """
         if append_api_key:
-            params = kwargs.get('data') or {}
+            params = kwargs.get("data") or {}
 
-            if 'api_key' not in params:
-                params['api_key'] = self.api_key
+            if "api_key" not in params:
+                params["api_key"] = self.api_key
 
-            kwargs['data'] = params
+            kwargs["data"] = params
 
         if endpoint.startswith("https://"):
             url = endpoint
@@ -59,6 +59,6 @@ class ItchApiClient:
         # Itch always returns UTF-8 pages and API responses. Force
         # UTF-8 everywhere, except for binary file downloads.
         if not guess_encoding:
-            r.encoding = 'utf-8'
+            r.encoding = "utf-8"
 
         return r
