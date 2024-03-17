@@ -203,7 +203,7 @@ class GameDownloader:
 
                 return r.url
         except HTTPError as e:
-            raise ItchDownloadError(f"Unrecoverable download error: {e}")
+            raise ItchDownloadError(f"Unrecoverable download error: {e}") from e
 
     def download_file_by_upload_id(self, upload_id: int, download_path: Optional[str], credentials: dict) -> str:
         """Performs a request to download a given upload by its ID."""
@@ -225,7 +225,7 @@ class GameDownloader:
             # As metadata is the final file we write, all the files
             # should already be downloaded at this point.
             logging.info("Skipping already-downloaded game for URL: %s", url)
-            return DownloadResult(url, True, [f"Game already downloaded."], [])
+            return DownloadResult(url, True, ["Game already downloaded."], [])
 
         try:
             logging.info("Downloading %s", url)
@@ -258,7 +258,7 @@ class GameDownloader:
         try:
             os.makedirs(paths['files'], exist_ok=True)
             for upload in game_uploads:
-                if any([key not in upload for key in ('id', 'filename', 'storage')]):
+                if any(key not in upload for key in ('id', 'filename', 'storage')):
                     errors.append(f"Upload metadata incomplete: {upload}")
                     continue
 

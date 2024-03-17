@@ -51,7 +51,7 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> List[str]:
     """
     page = 1
     found_urls: Set[str] = set()
-    logging.info(f"Scraping game URLs from RSS feeds for %s", url)
+    logging.info("Scraping game URLs from RSS feeds for %s", url)
 
     while True:
         logging.info(f"Downloading page {page} (found {len(found_urls)} URLs total)")
@@ -214,7 +214,7 @@ def get_jobs_for_path(path: str) -> List[str]:
         logging.info("Parsing provided file as a list of URLs to fetch...")
         return url_list
 
-    raise ValueError(f"File format is unknown - cannot read URLs to download.")
+    raise ValueError("File format is unknown - cannot read URLs to download.")
 
 
 def get_jobs_for_url_or_path(path_or_url: str, settings: Settings) -> List[str]:
