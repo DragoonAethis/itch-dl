@@ -6,7 +6,7 @@ import urllib.parse
 from typing import List, Dict, TypedDict, Optional, Union
 
 from bs4 import BeautifulSoup
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, JSONDecodeError
 
 from tqdm import tqdm
 from tqdm.contrib.concurrent import thread_map
@@ -114,8 +114,17 @@ class GameDownloader:
             data_request = self.client.get(data_url, append_api_key=False)
             if data_request.ok:
                 try:
-                    game_id = int(data_request.json().get("id"))
-                except ValueError:
+                    game_data = data_request.json()
+
+                    if "errors" in game_data:
+                        raise ItchDownloadError(
+                            f"Game data fetching failed for {url} "
+                            f"(likely access restricted, see issue #16): {game_data['errors']}"
+                        )
+
+                    if "id" in game_data:
+                        game_id = int(game_data["id"])
+                except (ValueError, TypeError, JSONDecodeError):
                     pass
 
         if game_id is None:
