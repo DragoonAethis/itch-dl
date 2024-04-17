@@ -28,8 +28,8 @@ tqdm = "^4.66.2"
 urllib3 = "^1.26.18"
 requests = "^2.31.0"
 beautifulsoup4 = "^4.12.3"
-lxml = "^5.1.0"
-pydantic = "^1.10.14"
+lxml = "^5.2.1"
+pydantic = "^1.10.15"
 
 [tool.poetry.scripts]
 itch-dl = "itch_dl.cli:run"
