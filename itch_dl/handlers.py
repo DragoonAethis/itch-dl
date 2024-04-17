@@ -86,7 +86,7 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> List[str]:
     return list(found_urls)
 
 
-def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> dict:
+def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> List[str]:
     page = 1
     found_urls: Set[str] = set()
 
