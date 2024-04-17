@@ -2,9 +2,18 @@
 
 [![PyPI](https://img.shields.io/pypi/v/itch-dl)](https://pypi.org/project/itch-dl/)
 
-Bulk download games from [itch.io](https://itch.io/).
+Bulk download games from [itch.io](https://itch.io/)
 
-- Can download game jams, browse pages (popular, newest, browse by tag...) and individual games.
+- Can handle links with:
+  - [Game jams](https://itch.io/jams) (ex. https://itch.io/jam/gmtk-2023 or https://itch.io/jam/gbcompo23),
+  - [Browse pages](https://itch.io/games) (popular, newest, browse by tag...),
+  - [Collections](https://itch.io/my-collections) (ex. https://itch.io/c/4187503/test-collection),
+  - [Your library](https://itch.io/my-purchases),
+  - Individual games and titles (ex. https://maddymakesgamesinc.itch.io/celeste,
+    https://dragonruby.itch.io/dragonruby-gtk, or https://supergiant-games.itch.io/pyre).
+- Currently **NOT** supported:
+  - Bundles ([#11](https://github.com/DragoonAethis/itch-dl/issues/11))
+  - Access restricted games ([#16](https://github.com/DragoonAethis/itch-dl/issues/16))
 - Requires Python 3.8+, grab it from [PyPI](https://pypi.org/project/itch-dl/): `pip install itch-dl`
 - For development, use [Poetry](https://python-poetry.org/).
 
@@ -21,9 +30,8 @@ More arguments are available - check them out with `itch-dl --help`.
 
 The downloader is able to grab more or less everything you can download via the itch app.
 
-The input URL can be any "Browse" page (top, popular, newest, filtered by tags, etc) or any
-game jam. The input can also be a path to a itch.io JSON file with game jam entries, or just
-a list of itch.io game URLs (not browse/jam pages!) to download.
+The input URL can be one of the supported link formats listed above, a path to a itch.io JSON
+file with game jam entries, a list of itch.io game URLs (not browse/jam pages!) to download.
 
 **It's expected that the downloader output will not be complete** - logs are stupidly verbose
 and it prints a report on failed downloads and external URLs (links to files that are not on
