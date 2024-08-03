@@ -17,6 +17,10 @@ Bulk download games from [itch.io](https://itch.io/)
 - Requires Python 3.8+, grab it from [PyPI](https://pypi.org/project/itch-dl/): `pip install itch-dl`
 - For development, use [Poetry](https://python-poetry.org/).
 
+> [!WARNING]
+> This tool does not let you download paid games for free. To download paid games, you must have
+> them attached in [your library](https://itch.io/my-purchases).
+
 
 ## How to use
 
