@@ -3,6 +3,8 @@ import json
 import re
 import logging
 import urllib.parse
+import zipfile
+import tarfile
 from typing import List, Dict, TypedDict, Optional, Union
 
 from bs4 import BeautifulSoup
@@ -219,6 +221,34 @@ class GameDownloader:
         """Performs a request to download a given upload by its ID."""
         return self.download_file(f"/uploads/{upload_id}/download", download_path, credentials)
 
+    @staticmethod
+    def get_decompressed_content_size(target_path) -> None | int:
+        """For some files, Itch API returns the decompressed file size, but serves
+        compressed downloads. Try to figure out the decompressed size. It may be
+        a single file in the root, or a container + files in it."""
+        if zipfile.is_zipfile(target_path):
+            try:
+                with zipfile.ZipFile(target_path) as f:
+                    # Zip files contain either directories or files. The file format
+                    # is compression-aware, compress_size is packed, file_size is unpacked.
+                    file_infos = [i for i in f.infolist() if not i.is_dir()]
+                    return None if len(file_infos) == 0 else sum(i.file_size for i in file_infos)
+            except zipfile.BadZipFile:
+                return None
+
+        if tarfile.is_tarfile(target_path):
+            try:
+                with tarfile.open(target_path) as f:
+                    # Tar files can contain any Unix "file", so regular files,
+                    # directories, symlinks, devices and FIFOs are fair game...
+                    # On the other hand, TAR is not compression-aware.
+                    file_infos = [i for i in f.getmembers() if i.isfile()]
+                    return None if len(file_infos) == 0 else sum(i.size for i in file_infos)
+            except tarfile.TarError:
+                return None
+
+        return None
+
     def download(self, url: str, skip_downloaded: bool = True):
         match = re.match(ITCH_GAME_URL_REGEX, url)
         if not match:
@@ -274,14 +304,14 @@ class GameDownloader:
 
                 upload_id = upload["id"]
                 file_name = upload["filename"]
-                file_size = upload.get("size")
+                expected_size = upload.get("size")
                 upload_is_external = upload["storage"] == "external"
 
                 logging.debug(
                     "Downloading '%s' (%d), %s",
                     file_name,
                     upload_id,
-                    f"{file_size} bytes" if file_size is not None else "unknown size",
+                    f"{expected_size} bytes" if expected_size is not None else "unknown size",
                 )
 
                 target_path = None if upload_is_external else os.path.join(paths["files"], file_name)
@@ -295,13 +325,24 @@ class GameDownloader:
                 if upload_is_external:
                     logging.debug("Found external download URL for %s: %s", target_url)
                     external_urls.append(target_url)
+                    continue
 
                 try:
-                    downloaded_file_size = os.stat(target_path).st_size
-                    if target_path is not None and file_size is not None and downloaded_file_size != file_size:
-                        errors.append(f"File size is {downloaded_file_size}, expected {file_size} for upload {upload}")
+                    downloaded_file_stat = os.stat(target_path)
                 except FileNotFoundError:
                     errors.append(f"Downloaded file not found for upload {upload}")
+                    continue
+
+                downloaded_size = downloaded_file_stat.st_size
+                content_size = self.get_decompressed_content_size(target_path)
+                print("expected", expected_size, "downloaded", downloaded_size, "content", content_size)
+
+                if (
+                    all(x is not None for x in (target_path, expected_size, downloaded_size))
+                    and downloaded_size != expected_size
+                    and content_size != expected_size
+                ):
+                    errors.append(f"Downloaded file size is {downloaded_size} (content {content_size}), expected {expected_size} for upload {upload}")
 
             logging.debug("Done downloading files for %s", title)
         except Exception as e:
