@@ -24,12 +24,12 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-tqdm = "^4.66.2"
-urllib3 = "^1.26.18"
-requests = "^2.31.0"
+tqdm = "^4.67.0"
+urllib3 = "^1.26.20"
+requests = "^2.32.3"
 beautifulsoup4 = "^4.12.3"
-lxml = "^5.2.1"
-pydantic = "^1.10.15"
+lxml = "^5.3.0"
+pydantic = "^1.10.19"
 
 [tool.poetry.scripts]
 itch-dl = "itch_dl.cli:run"
