@@ -335,7 +335,6 @@ class GameDownloader:
 
                 downloaded_size = downloaded_file_stat.st_size
                 content_size = self.get_decompressed_content_size(target_path)
-                print("expected", expected_size, "downloaded", downloaded_size, "content", content_size)
 
                 if (
                     all(x is not None for x in (target_path, expected_size, downloaded_size))
