@@ -4,6 +4,7 @@ import logging
 import urllib.parse
 from typing import List, Set, Optional
 
+from http.client import responses
 from bs4 import BeautifulSoup
 
 from .api import ItchApiClient
@@ -117,6 +118,27 @@ def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> List[str]:
     return list(found_urls)
 
 
+def get_jobs_for_creator(creator: str, client: ItchApiClient) -> List[str]:
+    logging.info("Downloading public games for creator %s", creator)
+    r = client.get(f"https://{ITCH_BASE}/profile/{creator}", append_api_key=False)
+    if not r.ok:
+        raise ItchDownloadError(f"Could not fetch the creator page: HTTP {r.status_code} {responses[r.status_code]}")
+
+    prefix = f"https://{creator}.{ITCH_BASE}/"
+    game_links = set()
+
+    soup = BeautifulSoup(r.text, features="xml")
+    for link in soup.select("a.game_link"):
+        link_url = link.attrs.get('href')
+        if not link_url:
+            continue
+
+        if link_url.startswith(prefix):
+            game_links.add(link_url)
+
+    return list(sorted(game_links))
+
+
 def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
     if url.startswith("http://"):
         logging.info("HTTP link provided, upgrading to HTTPS")
@@ -160,9 +182,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
 
         elif site == "profile":  # Forum Profile
             if len(url_path_parts) >= 2:
-                username = url_path_parts[1]
-                logging.info("Correcting user profile to creator page for %s", username)
-                return get_jobs_for_itch_url(f"https://{username}.{ITCH_BASE}", client)
+                return get_jobs_for_creator(url_path_parts[1], client)
 
             raise ValueError("itch-dl expects a username in profile links.")
 
@@ -179,8 +199,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
 
     elif url_parts.netloc.endswith(f".{ITCH_BASE}"):
         if len(url_path_parts) == 0:  # Author
-            # TODO: Find I.UserPage, regex for "user_id": [0-9]+, find the responsible API?
-            raise NotImplementedError("itch-dl cannot download author pages yet.")
+            return get_jobs_for_creator(url_parts.netloc.split('.')[0], client)
 
         else:  # Single game
             # Just clean and return the URL:
