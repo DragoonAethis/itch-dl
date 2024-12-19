@@ -9,6 +9,7 @@ Bulk download games from [itch.io](https://itch.io/)
   - [Browse pages](https://itch.io/games) (popular, newest, browse by tag...),
   - [Collections](https://itch.io/my-collections) (ex. https://itch.io/c/4187503/test-collection),
   - [Your library](https://itch.io/my-purchases),
+  - Creator/profile pages (ex. https://kiseff.itch.io/, https://itch.io/profile/pancelor).
   - Individual games and titles (ex. https://maddymakesgamesinc.itch.io/celeste,
     https://dragonruby.itch.io/dragonruby-gtk, or https://supergiant-games.itch.io/pyre).
 - Currently **NOT** supported:
