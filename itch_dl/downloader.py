@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import fnmatch
 import logging
 import urllib.parse
 import zipfile
@@ -65,6 +66,7 @@ class GameDownloader:
         self.download_to = download_to
         self.mirror_web = mirror_web
 
+        self.settings = settings
         self.download_keys = keys
         self.client = ItchApiClient(settings.api_key, settings.user_agent)
 
@@ -306,6 +308,22 @@ class GameDownloader:
                 file_name = upload["filename"]
                 expected_size = upload.get("size")
                 upload_is_external = upload["storage"] == "external"
+
+                if self.settings.filter_files_glob and not fnmatch.fnmatch(file_name, self.settings.filter_files_glob):
+                    logging.info(
+                        "File '%s' does not match the glob filter '%s', skipping",
+                        file_name,
+                        self.settings.filter_files_glob
+                    )
+                    continue
+
+                if self.settings.filter_files_regex and not re.fullmatch(self.settings.filter_files_regex, file_name):
+                    logging.info(
+                        "File '%s' does not match the regex filter '%s', skipping",
+                        file_name,
+                        self.settings.filter_files_regex
+                    )
+                    continue
 
                 logging.debug(
                     "Downloading '%s' (%d), %s",

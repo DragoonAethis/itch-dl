@@ -17,6 +17,9 @@ class Settings(BaseModel):
     api_key: Optional[str] = None
     user_agent: str = f"python-requests/{requests.__version__} itch-dl/{__version__}"
 
+    filter_files_glob: Optional[str] = None
+    filter_files_regex: Optional[str] = None
+
 
 def create_and_get_config_path() -> str:
     """Returns the configuration directory in the appropriate

@@ -29,6 +29,10 @@ def parse_args() -> argparse.Namespace:
                         help="how many threads to use for downloading games (default: 1)")
     parser.add_argument("--mirror-web", action="store_true",
                         help="try to fetch assets on game sites")
+    parser.add_argument("--filter-files-glob", metavar="glob", default=None,
+                        help="filter downloaded files with a shell-style glob/fnmatch (unmatched files are skipped)")
+    parser.add_argument("--filter-files-regex", metavar="regex", default=None,
+                        help="filter downloaded files with a Python regex (unmatched files are skipped)")
     parser.add_argument("--verbose", action="store_true",
                         help="print verbose logs")
     return parser.parse_args()
@@ -36,8 +40,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def apply_args_on_settings(args: argparse.Namespace, settings: Settings):
-    if args.api_key:
-        settings.api_key = args.api_key
+    """Apply settings overrides from provided command line arguments, if set."""
+    for key in ("api_key", "filter_files_glob", "filter_files_regex"):
+        value = getattr(args, key)
+        if value:
+            setattr(settings, key, value)
 
 
 def run() -> int:
