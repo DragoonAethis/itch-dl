@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "itch-dl"
 packages = [{ include = "itch_dl" }]
-version = "0.5.1"
+version = "0.5.2"
 description = "itch.io bulk game downloader"
 homepage = "https://github.com/DragoonAethis/itch-dl"
 repository = "https://github.com/DragoonAethis/itch-dl"
