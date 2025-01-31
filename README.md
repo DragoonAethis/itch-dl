@@ -13,9 +13,22 @@ Bulk download games from [itch.io](https://itch.io/)
   - Individual games and titles (ex. https://maddymakesgamesinc.itch.io/celeste,
     https://dragonruby.itch.io/dragonruby-gtk, or https://supergiant-games.itch.io/pyre).
 - Currently **NOT** supported:
-  - Bundles ([#11](https://github.com/DragoonAethis/itch-dl/issues/11))
   - Access restricted games ([#16](https://github.com/DragoonAethis/itch-dl/issues/16))
-- Requires Python 3.8+, grab it from [PyPI](https://pypi.org/project/itch-dl/): `pip install itch-dl`
+  - Bundles ([#11](https://github.com/DragoonAethis/itch-dl/issues/11)) - workaround:
+    - Use [this userscript with Tampermonkey](https://gist.github.com/lats/c920866caf9c0cb04e82abba411e1bb9)
+      or [Emersont1/itchio](https://github.com/Emersont1/itchio) -> `itch-load-bundle`
+      to bulk add bundled games to your library.
+    - Then, use `itch-dl https://itch.io/my-purchases` to download your entire library.
+- Requires Python 3.10 or newer, how to launch:
+  - **Recommended:** Launch with [uvx](https://docs.astral.sh/uv/getting-started/installation/): `uvx itch-dl`
+    - Fast! Safe! Will download and set up Python if you don't have it! Things just work! The future is here!
+  - Launch with [pipx](https://pipx.pypa.io/latest/installation/): `pipx itch-dl`
+    - If you are using Linux, you most likely have `pipx` available in your distro repositories.
+    - On macOS and Windows, prefer `uvx` from the links above.
+  - Grab it from [PyPI](https://pypi.org/project/itch-dl/) and install in your own environment: `pip install itch-dl`
+    - Make sure you are using a virtualenv before installing `itch-dl`.
+    - Installing the tool in your global Python environment is not recommended... but you can.
+  - Last version to support Python 3.8/3.9 is [0.5.2](https://pypi.org/project/itch-dl/0.5.2/).
 - For development, use [Poetry](https://python-poetry.org/).
 
 > [!WARNING]
@@ -28,7 +41,8 @@ Bulk download games from [itch.io](https://itch.io/)
 - Log into itch.io with the account you'd like to use for downloading.
 - Generate [a new API key](https://itch.io/user/settings/api-keys) on your user account page.
 - Optional: Save the API key in the [itch-dl configuration file](https://github.com/DragoonAethis/itch-dl/wiki/Configuration-Files).
-- Run the downloader: `itch-dl https://itch.io/jam/yourjamhere` (add `--api-key <KEY>` if you did not save the API key).
+- Run the downloader: `uvx itch-dl https://itch.io/jam/yourjamhere`
+  - Add `--api-key <KEY>` if you did not save the API key to the config file.
 - Wait. This is going to take a while.
 
 More arguments are available - check them out with `itch-dl --help`.
