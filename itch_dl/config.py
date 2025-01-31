@@ -2,12 +2,25 @@ import os
 import json
 import logging
 import platform
+import argparse
 from typing import Optional
 
 import requests
 from pydantic import BaseModel
 
 from . import __version__
+
+OVERRIDABLE_SETTINGS = (
+    "api_key",
+    "user_agent",
+    "download_to",
+    "mirror_web",
+    "urls_only",
+    "parallel",
+    "filter_files_glob",
+    "filter_files_regex",
+    "verbose",
+)
 
 
 class Settings(BaseModel):
@@ -17,8 +30,15 @@ class Settings(BaseModel):
     api_key: Optional[str] = None
     user_agent: str = f"python-requests/{requests.__version__} itch-dl/{__version__}"
 
+    download_to: Optional[str] = None
+    mirror_web: bool = False
+    urls_only: bool = False
+    parallel: int = 1
+
     filter_files_glob: Optional[str] = None
     filter_files_regex: Optional[str] = None
+
+    verbose: bool = False
 
 
 def create_and_get_config_path() -> str:
@@ -37,7 +57,7 @@ def create_and_get_config_path() -> str:
     return os.path.join(base_path, "itch-dl")
 
 
-def load_config(profile: Optional[str] = None) -> Settings:
+def load_config(args: argparse.Namespace, profile: Optional[str] = None) -> Settings:
     """Loads the configuration from the file system if it exists,
     the returns a Settings object."""
     config_path = create_and_get_config_path()
@@ -58,4 +78,13 @@ def load_config(profile: Optional[str] = None) -> Settings:
 
         config_data.update(profile_data)
 
-    return Settings(**config_data)
+    # All settings from the base file:
+    settings = Settings(**config_data)
+
+    # Apply overrides from CLI args:
+    for key in OVERRIDABLE_SETTINGS:
+        value = getattr(args, key)
+        if value:
+            setattr(settings, key, value)
+
+    return settings

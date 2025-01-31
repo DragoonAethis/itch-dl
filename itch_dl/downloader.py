@@ -62,10 +62,7 @@ class GameMetadata(TypedDict, total=False):
 
 
 class GameDownloader:
-    def __init__(self, download_to: str, mirror_web: bool, settings: Settings, keys: Dict[int, str]):
-        self.download_to = download_to
-        self.mirror_web = mirror_web
-
+    def __init__(self, settings: Settings, keys: Dict[int, str]):
         self.settings = settings
         self.download_keys = keys
         self.client = ItchApiClient(settings.api_key, settings.user_agent)
@@ -258,7 +255,7 @@ class GameDownloader:
 
         author, game = match["author"], match["game"]
 
-        download_path = os.path.join(self.download_to, author, game)
+        download_path = os.path.join(self.settings.download_to, author, game)
         os.makedirs(download_path, exist_ok=True)
 
         paths: Dict[str, str] = {k: os.path.join(download_path, v) for k, v in TARGET_PATHS.items()}
@@ -372,7 +369,7 @@ class GameDownloader:
             logging.warning(f"Game {title} has external download URLs: {external_urls}")
 
         # TODO: Mirror JS/CSS assets
-        if self.mirror_web:
+        if self.settings.mirror_web:
             os.makedirs(paths["screenshots"], exist_ok=True)
             for screenshot in metadata["screenshots"]:
                 if not screenshot:
@@ -406,20 +403,17 @@ class GameDownloader:
 
 def drive_downloads(
     jobs: List[str],
-    download_to: str,
-    mirror_web: bool,
     settings: Settings,
     keys: Dict[int, str],
-    parallel: int = 1,
 ):
-    downloader = GameDownloader(download_to, mirror_web, settings, keys)
+    downloader = GameDownloader(settings, keys)
     tqdm_args = {
         "desc": "Games",
         "unit": "game",
     }
 
-    if parallel > 1:
-        results = thread_map(downloader.download, jobs, max_workers=parallel, **tqdm_args)
+    if settings.parallel > 1:
+        results = thread_map(downloader.download, jobs, max_workers=settings.parallel, **tqdm_args)
     else:
         results = [downloader.download(job) for job in tqdm(jobs, **tqdm_args)]
 
