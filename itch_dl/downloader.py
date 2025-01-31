@@ -6,7 +6,7 @@ import logging
 import urllib.parse
 import zipfile
 import tarfile
-from typing import List, Dict, TypedDict, Optional, Union
+from typing import List, Dict, TypedDict, Optional, Union, Any
 
 from bs4 import BeautifulSoup
 from requests.exceptions import HTTPError, JSONDecodeError
@@ -30,7 +30,7 @@ TARGET_PATHS = {
 
 
 class DownloadResult:
-    def __init__(self, url: str, success: bool, errors, external_urls: List[str]):
+    def __init__(self, url: str, success: bool, errors: Optional[List[str]], external_urls: List[str]) -> None:
         self.url = url
         self.success = success
         self.errors = errors or []
@@ -62,13 +62,13 @@ class GameMetadata(TypedDict, total=False):
 
 
 class GameDownloader:
-    def __init__(self, settings: Settings, keys: Dict[int, str]):
+    def __init__(self, settings: Settings, keys: Dict[int, str]) -> None:
         self.settings = settings
         self.download_keys = keys
         self.client = ItchApiClient(settings.api_key, settings.user_agent)
 
     @staticmethod
-    def get_rating_json(site) -> Optional[dict]:
+    def get_rating_json(site: BeautifulSoup) -> Optional[dict]:
         for ldjson_node in site.find_all("script", type="application/ld+json"):
             try:
                 ldjson: dict = json.loads(ldjson_node.text.strip())
@@ -80,7 +80,7 @@ class GameDownloader:
         return None
 
     @staticmethod
-    def get_meta(site, **kwargs) -> Optional[str]:
+    def get_meta(site: BeautifulSoup, **kwargs: Any) -> Optional[str]:  # noqa: ANN401
         """Grabs <meta property="xyz" content="value"/> values."""
         node = site.find("meta", attrs=kwargs)
         if not node:
@@ -160,8 +160,8 @@ class GameDownloader:
             infobox = parse_infobox(infobox_div)
             for dt in ("created_at", "updated_at", "released_at", "published_at"):
                 if dt in infobox:
-                    metadata[dt] = infobox[dt].isoformat()  # noqa (non-literal TypedDict keys)
-                    del infobox[dt]  # noqa (non-literal TypedDict keys)
+                    metadata[dt] = infobox[dt].isoformat()  # noqa: PyTypedDict (non-literal TypedDict keys)
+                    del infobox[dt]  # noqa: PyTypedDict (non-literal TypedDict keys)
 
             if "author" in infobox:
                 metadata["author"] = infobox["author"]["author"]
@@ -179,7 +179,7 @@ class GameDownloader:
         if agg_rating:
             try:
                 metadata["rating"] = {"average": float(agg_rating["ratingValue"]), "votes": agg_rating["ratingCount"]}
-            except:  # noqa
+            except:  # noqa: E722 (do not use bare `except`)
                 logging.exception("Could not extract the rating metadata...")
                 pass  # Nope, just, don't
 
@@ -221,7 +221,7 @@ class GameDownloader:
         return self.download_file(f"/uploads/{upload_id}/download", download_path, credentials)
 
     @staticmethod
-    def get_decompressed_content_size(target_path) -> None | int:
+    def get_decompressed_content_size(target_path: str | os.PathLike[str]) -> None | int:
         """For some files, Itch API returns the decompressed file size, but serves
         compressed downloads. Try to figure out the decompressed size. It may be
         a single file in the root, or a container + files in it."""
@@ -248,7 +248,7 @@ class GameDownloader:
 
         return None
 
-    def download(self, url: str, skip_downloaded: bool = True):
+    def download(self, url: str, skip_downloaded: bool = True) -> DownloadResult:
         match = re.match(ITCH_GAME_URL_REGEX, url)
         if not match:
             return DownloadResult(url, False, [f"Game URL is invalid: {url} - please file a new issue."], [])
@@ -310,7 +310,7 @@ class GameDownloader:
                     logging.info(
                         "File '%s' does not match the glob filter '%s', skipping",
                         file_name,
-                        self.settings.filter_files_glob
+                        self.settings.filter_files_glob,
                     )
                     continue
 
@@ -318,7 +318,7 @@ class GameDownloader:
                     logging.info(
                         "File '%s' does not match the regex filter '%s', skipping",
                         file_name,
-                        self.settings.filter_files_regex
+                        self.settings.filter_files_regex,
                     )
                     continue
 
@@ -338,7 +338,7 @@ class GameDownloader:
                     continue
 
                 if upload_is_external:
-                    logging.debug("Found external download URL for %s: %s", target_url)
+                    logging.debug("Found external download URL for %s: %s", title, target_url)
                     external_urls.append(target_url)
                     continue
 
@@ -356,7 +356,10 @@ class GameDownloader:
                     and downloaded_size != expected_size
                     and content_size != expected_size
                 ):
-                    errors.append(f"Downloaded file size is {downloaded_size} (content {content_size}), expected {expected_size} for upload {upload}")
+                    errors.append(
+                        f"Downloaded file size is {downloaded_size} (content {content_size}), "
+                        f"expected {expected_size} for upload {upload}"
+                    )
 
             logging.debug("Done downloading files for %s", title)
         except Exception as e:
@@ -366,7 +369,7 @@ class GameDownloader:
         metadata["external_downloads"] = external_urls
 
         if len(external_urls) > 0:
-            logging.warning(f"Game {title} has external download URLs: {external_urls}")
+            logging.warning("Game %s has external download URLs: %s", title, external_urls)
 
         # TODO: Mirror JS/CSS assets
         if self.settings.mirror_web:
@@ -395,7 +398,7 @@ class GameDownloader:
             json.dump(metadata, f, indent=4)
 
         if len(errors) > 0:
-            logging.error(f"Game {title} has download errors: {errors}")
+            logging.error("Game %s has download errors: %s", title, errors)
 
         logging.info("Finished job %s (%s)", url, title)
         return DownloadResult(url, len(errors) == 0, errors, external_urls)
@@ -405,7 +408,7 @@ def drive_downloads(
     jobs: List[str],
     settings: Settings,
     keys: Dict[int, str],
-):
+) -> None:
     downloader = GameDownloader(settings, keys)
     tqdm_args = {
         "desc": "Games",

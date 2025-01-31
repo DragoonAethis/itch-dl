@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 
 import requests
 from requests import Session
@@ -9,7 +9,7 @@ from .consts import ITCH_API
 
 
 class ItchApiClient:
-    def __init__(self, api_key: str, user_agent: str, base_url: Optional[str] = None):
+    def __init__(self, api_key: str, user_agent: str, base_url: Optional[str] = None) -> None:
         self.base_url = base_url or ITCH_API
         self.api_key = api_key
 
@@ -33,7 +33,7 @@ class ItchApiClient:
         endpoint: str,
         append_api_key: bool = True,
         guess_encoding: bool = False,
-        **kwargs,
+        **kwargs: Any,  # noqa: ANN401
     ) -> requests.Response:
         """Wrapper around `requests.get`.
 
@@ -49,11 +49,7 @@ class ItchApiClient:
 
             kwargs["data"] = params
 
-        if endpoint.startswith("https://"):
-            url = endpoint
-        else:
-            url = self.base_url + endpoint
-
+        url = endpoint if endpoint.startswith("https://") else self.base_url + endpoint
         r = self.requests.get(url, **kwargs)
 
         # Itch always returns UTF-8 pages and API responses. Force

@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 import argparse
 
@@ -55,7 +56,7 @@ def run() -> int:
         logging.getLogger().setLevel(logging.DEBUG)
 
     if not settings.api_key:
-        exit(
+        sys.exit(
             "You did not provide an API key which itch-dl requires.\n"
             "See https://github.com/DragoonAethis/itch-dl/wiki/API-Keys for more info."
         )
@@ -67,17 +68,17 @@ def run() -> int:
     client = ItchApiClient(settings.api_key, settings.user_agent)
     profile_req = client.get("/profile")
     if not profile_req.ok:
-        exit(
+        sys.exit(
             f"Provided API key appears to be invalid: {profile_req.text}\n"
             "See https://github.com/DragoonAethis/itch-dl/wiki/API-Keys for more info."
         )
 
     jobs = get_jobs_for_url_or_path(url_or_path, settings)
     jobs = list(set(jobs))  # Deduplicate, just in case...
-    logging.info(f"Found {len(jobs)} URL(s).")
+    logging.info("Found %d URL(s).", len(jobs))
 
     if len(jobs) == 0:
-        exit("No URLs to download.")
+        sys.exit("No URLs to download.")
 
     if settings.urls_only:
         for job in jobs:
@@ -92,4 +93,5 @@ def run() -> int:
     # Grab all the download keys (there's no way to fetch them per title...):
     keys = get_download_keys(client)
 
-    return drive_downloads(jobs, settings, keys)
+    drive_downloads(jobs, settings, keys)
+    return 0

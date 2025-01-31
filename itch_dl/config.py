@@ -65,14 +65,14 @@ def load_config(args: argparse.Namespace, profile: Optional[str] = None) -> Sett
     profile_file_path = os.path.join(config_path, "profiles", profile or "")
 
     if os.path.isfile(config_file_path):
-        logging.debug(f"Found config file: {config_file_path}")
+        logging.debug("Found config file: %s", config_file_path)
         with open(config_file_path) as f:
             config_data = json.load(f)
     else:
         config_data = {}
 
     if os.path.isfile(profile_file_path):
-        logging.debug(f"Found profile: {profile_file_path}")
+        logging.debug("Found profile: %s", profile_file_path)
         with open(config_file_path) as f:
             profile_data = json.load(f)
 

@@ -31,10 +31,10 @@ def get_game_jam_json(jam_url: str, client: ItchApiClient) -> dict:
         raise ItchDownloadError(
             "Provided site did not contain the Game Jam ID. Provide "
             "the path to the game jam entries JSON file instead, or "
-            "create an itch-dl issue with the Game Jam URL."
+            "create an itch-dl issue with the Game Jam URL.",
         )
 
-    logging.info(f"Extracted Game Jam ID: {jam_id}")
+    logging.info("Extracted Game Jam ID: %d", jam_id)
     r = client.get(f"{ITCH_URL}/jam/{jam_id}/entries.json")
     if not r.ok:
         raise ItchDownloadError(f"Could not download the game jam entries list: {r.status_code} {r.reason}")
@@ -57,7 +57,7 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> List[str]:
     logging.info("Scraping game URLs from RSS feeds for %s", url)
 
     while True:
-        logging.info(f"Downloading page {page} (found {len(found_urls)} URLs total)")
+        logging.info("Downloading page %d (found %d URLs total)", page, len(found_urls))
         r = client.get(f"{url}.xml?page={page}", append_api_key=False)
         if not r.ok:
             logging.info("RSS feed returned %s, finished.", r.reason)
@@ -69,7 +69,7 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> List[str]:
             logging.info("No more items, finished.")
             break
 
-        logging.info(f"Found {len(rss_items)} items.")
+        logging.info("Found %d items.", len(rss_items))
         for item in rss_items:
             link_node = item.find("link")
             if link_node is None:
@@ -92,7 +92,7 @@ def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> List[str]:
     found_urls: Set[str] = set()
 
     while True:
-        logging.info(f"Downloading page {page} (found {len(found_urls)} URLs total)")
+        logging.info("Downloading page %d (found %d URLs total)", page, len(found_urls))
         r = client.get(url, data={"page": page}, timeout=15)
         if not r.ok:
             logging.info("Collection page %d returned %d %s, finished.", page, r.status_code, r.reason)
@@ -129,14 +129,14 @@ def get_jobs_for_creator(creator: str, client: ItchApiClient) -> List[str]:
 
     soup = BeautifulSoup(r.text, features="xml")
     for link in soup.select("a.game_link"):
-        link_url = link.attrs.get('href')
+        link_url = link.attrs.get("href")
         if not link_url:
             continue
 
         if link_url.startswith(prefix):
             game_links.add(link_url)
 
-    return list(sorted(game_links))
+    return sorted(game_links)
 
 
 def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
@@ -145,7 +145,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
         url = "https://" + url[7:]
 
     if url.startswith(f"https://www.{ITCH_BASE}/"):
-        logging.info(f"Correcting www.{ITCH_BASE} to {ITCH_BASE}")
+        logging.info("Correcting www.%s to %s", ITCH_BASE, ITCH_BASE)
         url = ITCH_URL + "/" + url[20:]
 
     url_parts = urllib.parse.urlparse(url)
@@ -199,7 +199,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
 
     elif url_parts.netloc.endswith(f".{ITCH_BASE}"):
         if len(url_path_parts) == 0:  # Author
-            return get_jobs_for_creator(url_parts.netloc.split('.')[0], client)
+            return get_jobs_for_creator(url_parts.netloc.split(".")[0], client)
 
         else:  # Single game
             # Just clean and return the URL:
@@ -226,9 +226,9 @@ def get_jobs_for_path(path: str) -> List[str]:
     url_list = []
     with open(path) as f:  # Plain job list?
         for line in f:
-            line = line.strip()
-            if line.startswith("https://") or line.startswith("http://"):
-                url_list.append(line)
+            link = line.strip()
+            if link.startswith("https://") or link.startswith("http://"):
+                url_list.append(link)
 
     if len(url_list) > 0:
         logging.info("Parsing provided file as a list of URLs to fetch...")

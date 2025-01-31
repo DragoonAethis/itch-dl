@@ -120,6 +120,6 @@ def parse_infobox(infobox: BeautifulSoup) -> InfoboxMetadata:
 
         parsed_block = parse_tr(name, content_td)
         if parsed_block:
-            meta[parsed_block[0]] = parsed_block[1]  # noqa (non-literal TypedDict keys)
+            meta[parsed_block[0]] = parsed_block[1]  # noqa: PyTypedDict (non-literal TypedDict keys)
 
     return meta
