@@ -249,6 +249,39 @@ class GameDownloader:
 
         return None
 
+    def map_metadata_to_hh(metadata):
+        tags = []
+        metadata_hh = {}
+        metadata_hh["screenshots"] = screenshot_names
+        metadata_hh["typetag"] = "game"
+        if "links" in metadata["extra"]:
+            for link in metadata["extra"]["links"].keys():
+                if "source" in link.lower():
+                    metadata_hh["repository"] = metadata["extra"]["links"][link]
+        if "license" in metadata["extra"]:
+            for value in metadata["extra"]["license"].keys():
+                if "source" in link.lower():
+                    metadata_hh["gameLicense"] = value
+        if "genre" in metadata["extra"]:
+            for value in metadata["extra"]["genre"].keys():
+                tags.append(value)
+        
+        if tags != []:
+            metadata_hh["tags"] = tags
+        metadata_hh["files"] = [
+            {
+                "default": True,
+                "filename": romfile,
+                "playable": True
+            }]
+        
+        metadata_hh["developer"] = metadata["author"]
+        metadata_hh["cover"] = cover_filename
+        metadata_hh["date"] = metadata["published_at"]
+        metadata_hh["website"] = metadata["url"]
+
+        return metadata_hh
+    
     def download(self, url: str, skip_downloaded: bool = True) -> DownloadResult:
         match = re.match(ITCH_GAME_URL_REGEX, url)
         if not match:
@@ -399,8 +432,9 @@ class GameDownloader:
             json.dump(metadata, f, indent=4)
 
         if self.settings.hh_export:
+            metadata_hh = map_metadata_to_hh(metadata)
             with open(paths["hh-metadata"], "w") as f:
-                json.dump(metadata, f, indent=4)
+                json.dump(metadata_hh, f, indent=4)
 
         if len(errors) > 0:
             logging.error("Game %s has download errors: %s", title, errors)
