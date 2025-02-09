@@ -41,6 +41,8 @@ def parse_args() -> argparse.Namespace:
                         help="filter downloaded files with a Python regex (unmatched files are skipped)")
     parser.add_argument("--verbose", action="store_true",
                         help="print verbose logs")
+    parser.add_argument("--hh-export", action="store_true",
+                        help="Export Homebrew Hub compliant entries")
 
     return parser.parse_args()
     # fmt: on

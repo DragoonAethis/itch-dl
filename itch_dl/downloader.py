@@ -26,6 +26,7 @@ TARGET_PATHS = {
     "metadata": "metadata.json",
     "files": "files",
     "screenshots": "screenshots",
+    "hh-metadata": "game.json"
 }
 
 
@@ -396,6 +397,10 @@ class GameDownloader:
 
         with open(paths["metadata"], "w") as f:
             json.dump(metadata, f, indent=4)
+
+        if self.settings.hh_export:
+            with open(paths["hh-metadata"], "w") as f:
+                json.dump(metadata, f, indent=4)
 
         if len(errors) > 0:
             logging.error("Game %s has download errors: %s", title, errors)
