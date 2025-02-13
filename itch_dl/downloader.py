@@ -268,6 +268,7 @@ class GameDownloader:
         
         if tags != []:
             metadata_hh["tags"] = tags
+
         metadata_hh["files"] = [
             {
                 "default": True,
