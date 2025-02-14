@@ -29,7 +29,9 @@ Bulk download games from [itch.io](https://itch.io/)
     - Make sure you are using a virtualenv before installing `itch-dl`.
     - Installing the tool in your global Python environment is not recommended... but you can.
   - Last version to support Python 3.8/3.9 is [0.5.2](https://pypi.org/project/itch-dl/0.5.2/).
-- For development, use [Poetry](https://python-poetry.org/).
+- For development, use [uv](https://docs.astral.sh/uv).
+  - Build backend: [hatchling](https://hatch.pypa.io/dev/config/build/).
+  - Version tag is in `itch_dl/__init__.py`.
 
 > [!WARNING]
 > This tool does not let you download paid games for free. To download paid games, you must have
