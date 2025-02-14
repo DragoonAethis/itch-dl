@@ -8,6 +8,11 @@ from .downloader import drive_downloads
 from .config import Settings, load_config
 from .keys import get_download_keys
 from .api import ItchApiClient
+from . import __version__
+
+import requests
+import lxml
+import bs4
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -15,7 +20,17 @@ logging.getLogger().setLevel(logging.INFO)
 
 def parse_args() -> argparse.Namespace:
     # fmt: off
-    parser = argparse.ArgumentParser(description="Bulk download stuff from Itch.io.")
+    parser = argparse.ArgumentParser(
+        description="Bulk download stuff from Itch.io.",
+        epilog=(
+            "Environment: "
+            f"itch-dl {__version__}, "
+            f"requests {requests.__version__}, "
+            f"lxml {lxml.__version__}, "
+            f"bs4 {bs4.__version__}"
+        )
+    )
+
     parser.add_argument("url_or_path",
                         help="itch.io URL or path to a game jam entries.json file")
     parser.add_argument("--profile", metavar="profile", default=None,
