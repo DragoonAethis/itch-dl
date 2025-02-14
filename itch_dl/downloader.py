@@ -6,7 +6,7 @@ import logging
 import urllib.parse
 import zipfile
 import tarfile
-from typing import List, Dict, TypedDict, Optional, Union, Any
+from typing import TypedDict, Any
 
 from bs4 import BeautifulSoup
 from requests.exceptions import HTTPError, JSONDecodeError
@@ -30,7 +30,7 @@ TARGET_PATHS = {
 
 
 class DownloadResult:
-    def __init__(self, url: str, success: bool, errors: Optional[List[str]], external_urls: List[str]) -> None:
+    def __init__(self, url: str, success: bool, errors: list[str] | None, external_urls: list[str]) -> None:
         self.url = url
         self.success = success
         self.errors = errors or []
@@ -42,17 +42,17 @@ class GameMetadata(TypedDict, total=False):
     title: str
     url: str
 
-    errors: List[str]
-    external_downloads: List[str]
+    errors: list[str]
+    external_downloads: list[str]
 
     author: str
     author_url: str
 
-    cover_url: Optional[str]
-    screenshots: List[str]
-    description: Optional[str]
+    cover_url: str | None
+    screenshots: list[str]
+    description: str | None
 
-    rating: Dict[str, Union[float, int]]
+    rating: dict[str, float | int]
     extra: InfoboxMetadata
 
     created_at: str
@@ -62,13 +62,13 @@ class GameMetadata(TypedDict, total=False):
 
 
 class GameDownloader:
-    def __init__(self, settings: Settings, keys: Dict[int, str]) -> None:
+    def __init__(self, settings: Settings, keys: dict[int, str]) -> None:
         self.settings = settings
         self.download_keys = keys
         self.client = ItchApiClient(settings.api_key, settings.user_agent)
 
     @staticmethod
-    def get_rating_json(site: BeautifulSoup) -> Optional[dict]:
+    def get_rating_json(site: BeautifulSoup) -> dict | None:
         for ldjson_node in site.find_all("script", type="application/ld+json"):
             try:
                 ldjson: dict = json.loads(ldjson_node.text.strip())
@@ -80,7 +80,7 @@ class GameDownloader:
         return None
 
     @staticmethod
-    def get_meta(site: BeautifulSoup, **kwargs: Any) -> Optional[str]:  # noqa: ANN401
+    def get_meta(site: BeautifulSoup, **kwargs: Any) -> str | None:  # noqa: ANN401
         """Grabs <meta property="xyz" content="value"/> values."""
         node = site.find("meta", attrs=kwargs)
         if not node:
@@ -89,7 +89,7 @@ class GameDownloader:
         return node.get("content")
 
     def get_game_id(self, url: str, site: BeautifulSoup) -> int:
-        game_id: Optional[int] = None
+        game_id: int | None = None
 
         try:
             # Headers: <meta name="itch:path" content="games/12345" />
@@ -134,14 +134,14 @@ class GameDownloader:
         return game_id
 
     def extract_metadata(self, game_id: int, url: str, site: BeautifulSoup) -> GameMetadata:
-        rating_json: Optional[dict] = self.get_rating_json(site)
+        rating_json: dict | None = self.get_rating_json(site)
         title = rating_json.get("name") if rating_json else None
 
-        description: Optional[str] = self.get_meta(site, property="og:description")
+        description: str | None = self.get_meta(site, property="og:description")
         if not description:
             description = self.get_meta(site, name="description")
 
-        screenshot_urls: List[str] = []
+        screenshot_urls: list[str] = []
         screenshots_node = site.find("div", class_="screenshot_list")
         if screenshots_node:
             screenshot_urls = [a["href"] for a in screenshots_node.find_all("a")]
@@ -193,7 +193,7 @@ class GameDownloader:
 
         return credentials
 
-    def download_file(self, url: str, download_path: Optional[str], credentials: dict) -> str:
+    def download_file(self, url: str, download_path: str | None, credentials: dict) -> str:
         """Performs a request to download a given file, optionally saves the
         file to the provided path and returns the final URL that was downloaded."""
         try:
@@ -216,7 +216,7 @@ class GameDownloader:
         except HTTPError as e:
             raise ItchDownloadError(f"Unrecoverable download error: {e}") from e
 
-    def download_file_by_upload_id(self, upload_id: int, download_path: Optional[str], credentials: dict) -> str:
+    def download_file_by_upload_id(self, upload_id: int, download_path: str | None, credentials: dict) -> str:
         """Performs a request to download a given upload by its ID."""
         return self.download_file(f"/uploads/{upload_id}/download", download_path, credentials)
 
@@ -258,7 +258,7 @@ class GameDownloader:
         download_path = os.path.join(self.settings.download_to, author, game)
         os.makedirs(download_path, exist_ok=True)
 
-        paths: Dict[str, str] = {k: os.path.join(download_path, v) for k, v in TARGET_PATHS.items()}
+        paths: dict[str, str] = {k: os.path.join(download_path, v) for k, v in TARGET_PATHS.items()}
 
         if os.path.exists(paths["metadata"]) and skip_downloaded:
             # As metadata is the final file we write, all the files
@@ -405,9 +405,9 @@ class GameDownloader:
 
 
 def drive_downloads(
-    jobs: List[str],
+    jobs: list[str],
     settings: Settings,
-    keys: Dict[int, str],
+    keys: dict[int, str],
 ) -> None:
     downloader = GameDownloader(settings, keys)
     tqdm_args = {

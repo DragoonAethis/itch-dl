@@ -4,7 +4,7 @@ import logging
 import platform
 import argparse
 from dataclasses import dataclass, fields
-from typing import Optional, Any, get_type_hints
+from typing import Any, get_type_hints
 
 import requests
 
@@ -16,16 +16,16 @@ class Settings:
     """Available settings for itch-dl. Make sure all of them
     have default values, as the config file may not exist."""
 
-    api_key: Optional[str] = None
+    api_key: str | None = None
     user_agent: str = f"python-requests/{requests.__version__} itch-dl/{__version__}"
 
-    download_to: Optional[str] = None
+    download_to: str | None = None
     mirror_web: bool = False
     urls_only: bool = False
     parallel: int = 1
 
-    filter_files_glob: Optional[str] = None
-    filter_files_regex: Optional[str] = None
+    filter_files_glob: str | None = None
+    filter_files_regex: str | None = None
 
     verbose: bool = False
 
@@ -73,7 +73,7 @@ def clean_config(config_data: dict[str, Any]) -> dict[str, Any]:
     return cleaned_config
 
 
-def load_config(args: argparse.Namespace, profile: Optional[str] = None) -> Settings:
+def load_config(args: argparse.Namespace, profile: str | None = None) -> Settings:
     """Loads the configuration from the file system if it exists,
     the returns a Settings object."""
     config_path = create_and_get_config_path()

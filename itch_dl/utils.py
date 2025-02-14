@@ -1,12 +1,11 @@
 import re
-from typing import Optional
 
 
 class ItchDownloadError(Exception):
     pass
 
 
-def get_int_after_marker_in_json(text: str, marker: str, key: str) -> Optional[int]:
+def get_int_after_marker_in_json(text: str, marker: str, key: str) -> int | None:
     """
     Many itch.io sites use a pattern like this: Most of the HTML page
     is prerendered, but certain interactive objects are handled with
@@ -14,7 +13,7 @@ def get_int_after_marker_in_json(text: str, marker: str, key: str) -> Optional[i
     somewhere near the end of each page. Those config blocks often
     contain metadata like game/page IDs that we want to extract.
     """
-    marker_line: Optional[str] = None
+    marker_line: str | None = None
     for line in reversed(text.splitlines()):
         marker_index = line.find(marker)
         if marker_index != -1:

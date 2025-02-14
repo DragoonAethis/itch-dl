@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Any
 
 import requests
 from requests import Session
@@ -9,7 +9,7 @@ from .consts import ITCH_API
 
 
 class ItchApiClient:
-    def __init__(self, api_key: str, user_agent: str, base_url: Optional[str] = None) -> None:
+    def __init__(self, api_key: str, user_agent: str, base_url: str | None = None) -> None:
         self.base_url = base_url or ITCH_API
         self.api_key = api_key
 

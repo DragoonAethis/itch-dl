@@ -25,7 +25,7 @@ classifiers = [
 "Donate" = "https://ko-fi.com/dragoonaethis"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.10"
 tqdm = "^4.67.1"
 urllib3 = "^1.26.20"
 requests = "^2.32.3"
@@ -41,7 +41,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 120
-target-version = "py38"
+target-version = "py310"
 
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/rules/
