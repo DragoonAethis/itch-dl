@@ -3,27 +3,16 @@ import json
 import logging
 import platform
 import argparse
-from typing import Optional
+from dataclasses import dataclass, fields
+from typing import Optional, Any, get_type_hints
 
 import requests
-from pydantic import BaseModel
 
 from . import __version__
 
-OVERRIDABLE_SETTINGS = (
-    "api_key",
-    "user_agent",
-    "download_to",
-    "mirror_web",
-    "urls_only",
-    "parallel",
-    "filter_files_glob",
-    "filter_files_regex",
-    "verbose",
-)
 
-
-class Settings(BaseModel):
+@dataclass
+class Settings:
     """Available settings for itch-dl. Make sure all of them
     have default values, as the config file may not exist."""
 
@@ -57,6 +46,33 @@ def create_and_get_config_path() -> str:
     return os.path.join(base_path, "itch-dl")
 
 
+def clean_config(config_data: dict[str, Any]) -> dict[str, Any]:
+    cleaned_config = {}
+    settings_invalid = False
+    type_hints = get_type_hints(Settings)
+
+    # Complain about invalid types, if any:
+    for key, value in config_data.items():
+        if not (expected_type := type_hints.get(key)):
+            logging.warning("Settings contain an unknown item, ignoring: '%s'", key)
+            continue
+
+        if not isinstance(value, expected_type):
+            logging.fatal("Settings.%s has invalid type '%s', expected '%s'", key, type(value), expected_type)
+
+            # Keep iterating to look up all the bad keys:
+            settings_invalid = True
+            continue
+
+        cleaned_config[key] = value
+
+    if settings_invalid:
+        logging.fatal("Settings invalid, bailing out!")
+        exit(1)
+
+    return cleaned_config
+
+
 def load_config(args: argparse.Namespace, profile: Optional[str] = None) -> Settings:
     """Loads the configuration from the file system if it exists,
     the returns a Settings object."""
@@ -79,12 +95,12 @@ def load_config(args: argparse.Namespace, profile: Optional[str] = None) -> Sett
         config_data.update(profile_data)
 
     # All settings from the base file:
-    settings = Settings(**config_data)
+    settings = Settings(**clean_config(config_data))
 
-    # Apply overrides from CLI args:
-    for key in OVERRIDABLE_SETTINGS:
-        value = getattr(args, key)
-        if value:
+    # Apply overrides from CLI args on each field in Settings:
+    for field in fields(Settings):
+        key = field.name
+        if value := getattr(args, key):
             setattr(settings, key, value)
 
     return settings

@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
                         help="configuration profile to load")
 
     # These args must match config.py -> Settings class. Make sure all defaults here
-    # evaluate to False, or apply_args_on_settings will override profile settings.
+    # evaluate to False, or load_config will override profile settings.
     parser.add_argument("--api-key", metavar="key", default=None,
                         help="itch.io API key - https://itch.io/user/settings/api-keys")
     parser.add_argument("--user-agent", metavar="agent", default=None,
