@@ -19,8 +19,10 @@ classifiers = [
 ]
 
 [tool.poetry.urls]
+"GitHub" = "https://github.com/DragoonAethis/itch-dl"
 "Wiki" = "https://github.com/DragoonAethis/itch-dl/wiki"
 "Bug Tracker" = "https://github.com/DragoonAethis/itch-dl/issues"
+"Donate" = "https://ko-fi.com/dragoonaethis"
 
 [tool.poetry.dependencies]
 python = "^3.8"
