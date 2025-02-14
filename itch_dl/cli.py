@@ -39,10 +39,10 @@ def parse_args() -> argparse.Namespace:
                         help="filter downloaded files with a shell-style glob/fnmatch (unmatched files are skipped)")
     parser.add_argument("--filter-files-regex", metavar="regex", default=None,
                         help="filter downloaded files with a Python regex (unmatched files are skipped)")
-    parser.add_argument("--verbose", action="store_true",
-                        help="print verbose logs")
     parser.add_argument("--hh-export", action="store_true",
                         help="Export Homebrew Hub compliant entries")
+    parser.add_argument("--verbose", action="store_true",
+                        help="print verbose logs")
 
     return parser.parse_args()
     # fmt: on
