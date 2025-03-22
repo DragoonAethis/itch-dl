@@ -26,6 +26,7 @@ TARGET_PATHS = {
     "metadata": "metadata.json",
     "files": "files",
     "screenshots": "screenshots",
+    "hh-metadata": "game.json"
 }
 
 
@@ -248,6 +249,42 @@ class GameDownloader:
 
         return None
 
+    def map_metadata_to_hh(metadata):
+        tags = []
+        metadata_hh = {}
+        metadata_hh["screenshots"] = screenshot_names
+        metadata_hh["typetag"] = "game"
+        source_code_found = False
+        if "links" in metadata["extra"]:
+            for link_name, link in metadata["extra"]["links"].items():
+                if any(key in link_name.lower() for key in ("github", "source", "repo")):
+                    metadata_hh["repository"] = link
+                    source_code_found = True
+        if "code_license" in metadata["extra"]:
+            for value in metadata["extra"]["code_license"].keys():
+                if source_code_found:
+                    metadata_hh["gameLicense"] = value
+        if "genre" in metadata["extra"]:
+            tags = list(metadata["extra"]["genre"].keys())
+
+        if tags != []:
+            metadata_hh["tags"] = tags
+
+
+        metadata_hh["files"] = [
+            {
+                "default": True,
+                "filename": romfile,
+                "playable": True
+            }]
+        
+        metadata_hh["developer"] = metadata["author"]
+        metadata_hh["cover"] = cover_filename
+        metadata_hh["date"] = metadata["published_at"]
+        metadata_hh["website"] = metadata["url"]
+
+        return metadata_hh
+    
     def download(self, url: str, skip_downloaded: bool = True) -> DownloadResult:
         match = re.match(ITCH_GAME_URL_REGEX, url)
         if not match:
@@ -396,6 +433,11 @@ class GameDownloader:
 
         with open(paths["metadata"], "w") as f:
             json.dump(metadata, f, indent=4)
+
+        if self.settings.hh_export:
+            metadata_hh = map_metadata_to_hh(metadata)
+            with open(paths["hh-metadata"], "w") as f:
+                json.dump(metadata_hh, f, indent=4)
 
         if len(errors) > 0:
             logging.error("Game %s has download errors: %s", title, errors)
