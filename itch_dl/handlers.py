@@ -2,7 +2,6 @@ import json
 import os.path
 import logging
 import urllib.parse
-from typing import List, Set, Optional
 
 from http.client import responses
 from bs4 import BeautifulSoup
@@ -14,7 +13,7 @@ from .config import Settings
 from .keys import get_owned_games
 
 
-def get_jobs_for_game_jam_json(game_jam_json: dict) -> List[str]:
+def get_jobs_for_game_jam_json(game_jam_json: dict) -> list[str]:
     if "jam_games" not in game_jam_json:
         raise Exception("Provided JSON is not a valid itch.io jam JSON.")
 
@@ -26,7 +25,7 @@ def get_game_jam_json(jam_url: str, client: ItchApiClient) -> dict:
     if not r.ok:
         raise ItchDownloadError(f"Could not download the game jam site: {r.status_code} {r.reason}")
 
-    jam_id: Optional[int] = get_int_after_marker_in_json(r.text, "I.ViewJam", "id")
+    jam_id: int | None = get_int_after_marker_in_json(r.text, "I.ViewJam", "id")
     if jam_id is None:
         raise ItchDownloadError(
             "Provided site did not contain the Game Jam ID. Provide "
@@ -42,7 +41,7 @@ def get_game_jam_json(jam_url: str, client: ItchApiClient) -> dict:
     return r.json()
 
 
-def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> List[str]:
+def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> list[str]:
     """
     Every browser page has a hidden RSS feed that can be accessed by
     appending .xml to its URL. An optional "page" argument lets us
@@ -53,7 +52,7 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> List[str]:
     .xml?page=N suffix and iterate until we've caught 'em all.
     """
     page = 1
-    found_urls: Set[str] = set()
+    found_urls: set[str] = set()
     logging.info("Scraping game URLs from RSS feeds for %s", url)
 
     while True:
@@ -87,9 +86,9 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> List[str]:
     return list(found_urls)
 
 
-def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> List[str]:
+def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> list[str]:
     page = 1
-    found_urls: Set[str] = set()
+    found_urls: set[str] = set()
 
     while True:
         logging.info("Downloading page %d (found %d URLs total)", page, len(found_urls))
@@ -118,7 +117,7 @@ def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> List[str]:
     return list(found_urls)
 
 
-def get_jobs_for_creator(creator: str, client: ItchApiClient) -> List[str]:
+def get_jobs_for_creator(creator: str, client: ItchApiClient) -> list[str]:
     logging.info("Downloading public games for creator %s", creator)
     r = client.get(f"https://{ITCH_BASE}/profile/{creator}", append_api_key=False)
     if not r.ok:
@@ -139,7 +138,7 @@ def get_jobs_for_creator(creator: str, client: ItchApiClient) -> List[str]:
     return sorted(game_links)
 
 
-def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
+def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> list[str]:
     if url.startswith("http://"):
         logging.info("HTTP link provided, upgrading to HTTPS")
         url = "https://" + url[7:]
@@ -149,7 +148,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
         url = ITCH_URL + "/" + url[20:]
 
     url_parts = urllib.parse.urlparse(url)
-    url_path_parts: List[str] = [x for x in str(url_parts.path).split("/") if len(x) > 0]
+    url_path_parts: list[str] = [x for x in str(url_parts.path).split("/") if len(x) > 0]
 
     if url_parts.netloc == ITCH_BASE:
         if len(url_path_parts) == 0:
@@ -209,7 +208,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> List[str]:
         raise ValueError(f"Unknown domain: {url_parts.netloc}")
 
 
-def get_jobs_for_path(path: str) -> List[str]:
+def get_jobs_for_path(path: str) -> list[str]:
     try:  # Game Jam Entries JSON?
         with open(path, "rb") as f:
             json_data = json.load(f)
@@ -237,7 +236,7 @@ def get_jobs_for_path(path: str) -> List[str]:
     raise ValueError("File format is unknown - cannot read URLs to download.")
 
 
-def get_jobs_for_url_or_path(path_or_url: str, settings: Settings) -> List[str]:
+def get_jobs_for_url_or_path(path_or_url: str, settings: Settings) -> list[str]:
     """Returns a list of Game URLs for a given itch.io URL or file."""
     path_or_url = path_or_url.strip()
 

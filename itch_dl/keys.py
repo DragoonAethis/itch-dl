@@ -1,11 +1,10 @@
 import logging
-from typing import Dict, List, Tuple
 
 from .api import ItchApiClient
 
 KEYS_CACHED: bool = False
-DOWNLOAD_KEYS: Dict[int, str] = {}
-GAME_URLS: List[str] = []
+DOWNLOAD_KEYS: dict[int, str] = {}
+GAME_URLS: list[str] = []
 
 
 def load_keys_and_urls(client: ItchApiClient) -> None:
@@ -36,21 +35,21 @@ def load_keys_and_urls(client: ItchApiClient) -> None:
     KEYS_CACHED = True
 
 
-def get_owned_keys(client: ItchApiClient) -> Tuple[Dict[int, str], List[str]]:
+def get_owned_keys(client: ItchApiClient) -> tuple[dict[int, str], list[str]]:
     if not KEYS_CACHED:
         load_keys_and_urls(client)
 
     return DOWNLOAD_KEYS, GAME_URLS
 
 
-def get_download_keys(client: ItchApiClient) -> Dict[int, str]:
+def get_download_keys(client: ItchApiClient) -> dict[int, str]:
     if not KEYS_CACHED:
         load_keys_and_urls(client)
 
     return DOWNLOAD_KEYS
 
 
-def get_owned_games(client: ItchApiClient) -> List[str]:
+def get_owned_games(client: ItchApiClient) -> list[str]:
     if not KEYS_CACHED:
         load_keys_and_urls(client)
 

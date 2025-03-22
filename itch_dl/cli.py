@@ -8,6 +8,11 @@ from .downloader import drive_downloads
 from .config import Settings, load_config
 from .keys import get_download_keys
 from .api import ItchApiClient
+from . import __version__
+
+import requests
+import lxml
+import bs4
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -15,14 +20,24 @@ logging.getLogger().setLevel(logging.INFO)
 
 def parse_args() -> argparse.Namespace:
     # fmt: off
-    parser = argparse.ArgumentParser(description="Bulk download stuff from Itch.io.")
+    parser = argparse.ArgumentParser(
+        description="Bulk download stuff from Itch.io.",
+        epilog=(
+            "Environment: "
+            f"itch-dl {__version__}, "
+            f"requests {requests.__version__}, "
+            f"lxml {lxml.__version__}, "
+            f"bs4 {bs4.__version__}"
+        )
+    )
+
     parser.add_argument("url_or_path",
                         help="itch.io URL or path to a game jam entries.json file")
     parser.add_argument("--profile", metavar="profile", default=None,
                         help="configuration profile to load")
 
     # These args must match config.py -> Settings class. Make sure all defaults here
-    # evaluate to False, or apply_args_on_settings will override profile settings.
+    # evaluate to False, or load_config will override profile settings.
     parser.add_argument("--api-key", metavar="key", default=None,
                         help="itch.io API key - https://itch.io/user/settings/api-keys")
     parser.add_argument("--user-agent", metavar="agent", default=None,

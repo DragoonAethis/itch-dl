@@ -1,46 +1,52 @@
-[tool.poetry]
+[project]
 name = "itch-dl"
-packages = [{ include = "itch_dl" }]
-version = "0.5.2"
+dynamic = ["version"]
 description = "itch.io bulk game downloader"
-homepage = "https://github.com/DragoonAethis/itch-dl"
-repository = "https://github.com/DragoonAethis/itch-dl"
-authors = ["Dragoon Aethis <dragoon@dragonic.eu>"]
+authors = [{ name = "Dragoon Aethis", email = "dragoon@dragonic.eu" }]
+requires-python = "~=3.10"
 readme = "README.md"
 license = "MIT"
-
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Topic :: System :: Archiving :: Backup",
     "Topic :: Games/Entertainment",
     "Topic :: Utilities",
-    "Typing :: Typed"
+    "Typing :: Typed",
+]
+dependencies = [
+    "tqdm>=4.67.1,<5",
+    "urllib3>=2.3.0,<3",
+    "requests>=2.32.3,<3",
+    "beautifulsoup4>=4.13.3,<5",
+    "lxml>=5.3.1,<6",
 ]
 
-[tool.poetry.urls]
-"Wiki" = "https://github.com/DragoonAethis/itch-dl/wiki"
-"Bug Tracker" = "https://github.com/DragoonAethis/itch-dl/issues"
+[project.urls]
+GitHub = "https://github.com/DragoonAethis/itch-dl"
+Wiki = "https://github.com/DragoonAethis/itch-dl/wiki"
+Issues = "https://github.com/DragoonAethis/itch-dl/issues"
+Donate = "https://ko-fi.com/dragoonaethis"
 
-[tool.poetry.dependencies]
-python = "^3.8"
-tqdm = "^4.67.0"
-urllib3 = "^1.26.20"
-requests = "^2.32.3"
-beautifulsoup4 = "^4.12.3"
-lxml = "^5.3.0"
-pydantic = "^1.10.19"
-
-[tool.poetry.scripts]
+[project.scripts]
 itch-dl = "itch_dl.cli:run"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "itch_dl/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["itch_dl"]
+
+[tool.hatch.build.targets.wheel]
+include = ["itch_dl"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py38"
+target-version = "py310"
 
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/rules/
