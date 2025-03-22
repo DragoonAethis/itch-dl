@@ -27,6 +27,7 @@ class Settings:
     filter_files_glob: str | None = None
     filter_files_regex: str | None = None
 
+    hh_export: bool = False
     verbose: bool = False
 
 
