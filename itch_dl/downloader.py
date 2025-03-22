@@ -254,24 +254,22 @@ class GameDownloader:
         metadata_hh = {}
         metadata_hh["screenshots"] = screenshot_names
         metadata_hh["typetag"] = "game"
-
         source_code_found = False
         if "links" in metadata["extra"]:
             for link_name, link in metadata["extra"]["links"].items():
                 if any(key in link_name.lower() for key in ("github", "source", "repo")):
                     metadata_hh["repository"] = link
                     source_code_found = True
-
         if "code_license" in metadata["extra"]:
             for value in metadata["extra"]["code_license"].keys():
                 if source_code_found:
                     metadata_hh["gameLicense"] = value
-
         if "genre" in metadata["extra"]:
             tags = list(metadata["extra"]["genre"].keys())
-        
+
         if tags != []:
             metadata_hh["tags"] = tags
+
 
         metadata_hh["files"] = [
             {
