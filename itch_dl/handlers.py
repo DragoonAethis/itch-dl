@@ -7,7 +7,7 @@ from http.client import responses
 from bs4 import BeautifulSoup
 
 from .api import ItchApiClient
-from .utils import ItchDownloadError, get_int_after_marker_in_json
+from .utils import ItchDownloadError, get_int_after_marker_in_json, should_skip_item_by_glob, should_skip_item_by_regex
 from .consts import ITCH_API, ITCH_BASE, ITCH_URL, ITCH_BROWSER_TYPES
 from .config import Settings
 from .keys import get_owned_games
@@ -251,3 +251,19 @@ def get_jobs_for_url_or_path(path_or_url: str, settings: Settings) -> list[str]:
         return get_jobs_for_path(path_or_url)
     else:
         raise NotImplementedError(f"Cannot handle path or URL: {path_or_url}")
+
+
+def preprocess_job_urls(jobs: list[str], settings: Settings) -> list[str]:
+    cleaned_jobs = set()
+    for job in jobs:
+        job = job.strip()
+
+        if should_skip_item_by_glob("URL", job, settings.filter_urls_glob):
+            continue
+
+        if should_skip_item_by_regex("URL", job, settings.filter_urls_regex):
+            continue
+
+        cleaned_jobs.add(job)
+
+    return list(cleaned_jobs)

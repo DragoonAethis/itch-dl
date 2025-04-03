@@ -27,6 +27,9 @@ class Settings:
     filter_files_glob: str | None = None
     filter_files_regex: str | None = None
 
+    filter_urls_glob: str | None = None
+    filter_urls_regex: str | None = None
+
     verbose: bool = False
 
 

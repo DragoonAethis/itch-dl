@@ -54,6 +54,12 @@ def parse_args() -> argparse.Namespace:
                         help="filter downloaded files with a shell-style glob/fnmatch (unmatched files are skipped)")
     parser.add_argument("--filter-files-regex", metavar="regex", default=None,
                         help="filter downloaded files with a Python regex (unmatched files are skipped)")
+
+    parser.add_argument("--filter-urls-glob", metavar="glob", default=None,
+                        help="filter itch URLs with a shell-style glob/fnmatch (unmatched URLs are skipped)")
+    parser.add_argument("--filter-urls-regex", metavar="regex", default=None,
+                        help="filter itch URLs with a Python regex (unmatched URLs are skipped)")
+
     parser.add_argument("--verbose", action="store_true",
                         help="print verbose logs")
 
@@ -89,8 +95,10 @@ def run() -> int:
         )
 
     jobs = get_jobs_for_url_or_path(url_or_path, settings)
-    jobs = list(set(jobs))  # Deduplicate, just in case...
-    logging.info("Found %d URL(s).", len(jobs))
+    logging.info("Found %d URL(s) total.", len(jobs))
+
+    jobs = preprocess_job_urls(jobs, settings)
+    logging.info("Will process %d URL(s) after filtering and deduplication.", len(jobs))
 
     if len(jobs) == 0:
         sys.exit("No URLs to download.")
