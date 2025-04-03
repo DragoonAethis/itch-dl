@@ -24,6 +24,8 @@ class Settings:
     urls_only: bool = False
     parallel: int = 1
 
+    filter_files_platform: list | None = None
+    filter_files_type: list | None = None
     filter_files_glob: str | None = None
     filter_files_regex: str | None = None
 
@@ -31,6 +33,44 @@ class Settings:
     filter_urls_regex: str | None = None
 
     verbose: bool = False
+
+
+def process_platform_traits(platforms: list[str]) -> list[str] | None:
+    """Converts the user-friendly platform strings into itch.io upload p_traits."""
+    if not platforms:
+        return None
+
+    trait_mapping = {
+        "win": "p_windows",
+        "lin": "p_linux",
+        "mac": "p_osx",
+        "osx": "p_osx",
+        "darwin": "p_osx",
+        "and": "p_android",
+    }
+
+    traits = set()
+    for p in platforms:
+        platform_trait = None
+        p = p.strip().lower().removeprefix("p_")
+
+        if p.startswith("native"):
+            p = platform.system().lower()
+            if p.endswith("bsd"):
+                logging.warning("Note: Native downloads for *BSDs are not available - Linux binaries will be used.")
+                p = "linux"
+
+        for key, trait in trait_mapping.items():
+            if p.startswith(key):
+                platform_trait = trait
+                break
+
+        if not platform_trait:
+            raise ValueError(f"Platform {p} not known!")
+
+        traits.add(platform_trait)
+
+    return list(traits)
 
 
 def create_and_get_config_path() -> str:
@@ -105,5 +145,8 @@ def load_config(args: argparse.Namespace, profile: str | None = None) -> Setting
         key = field.name
         if value := getattr(args, key):
             setattr(settings, key, value)
+
+    # Extra handling for special settings:
+    settings.filter_files_platform = process_platform_traits(settings.filter_files_platform)
 
     return settings

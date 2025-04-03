@@ -15,7 +15,7 @@ from tqdm import tqdm
 from tqdm.contrib.concurrent import thread_map
 
 from .api import ItchApiClient
-from .utils import ItchDownloadError, get_int_after_marker_in_json
+from .utils import ItchDownloadError, get_int_after_marker_in_json, should_skip_item_by_glob, should_skip_item_by_regex
 from .consts import ITCH_GAME_URL_REGEX
 from .config import Settings
 from .infobox import parse_infobox, InfoboxMetadata
@@ -297,29 +297,35 @@ class GameDownloader:
         try:
             os.makedirs(paths["files"], exist_ok=True)
             for upload in game_uploads:
-                if any(key not in upload for key in ("id", "filename", "storage")):
+                if any(key not in upload for key in ("id", "filename", "type", "traits", "storage")):
                     errors.append(f"Upload metadata incomplete: {upload}")
                     continue
 
+                logging.info(upload)
                 upload_id = upload["id"]
                 file_name = upload["filename"]
+                file_type = upload["type"]
+                file_traits = upload["traits"]
                 expected_size = upload.get("size")
                 upload_is_external = upload["storage"] == "external"
 
-                if self.settings.filter_files_glob and not fnmatch.fnmatch(file_name, self.settings.filter_files_glob):
-                    logging.info(
-                        "File '%s' does not match the glob filter '%s', skipping",
-                        file_name,
-                        self.settings.filter_files_glob,
-                    )
+                if self.settings.filter_files_type and file_type not in self.settings.filter_files_type:
+                    logging.info("File '%s' has ignored type '%s', skipping", file_name, file_type)
                     continue
 
-                if self.settings.filter_files_regex and not re.fullmatch(self.settings.filter_files_regex, file_name):
-                    logging.info(
-                        "File '%s' does not match the regex filter '%s', skipping",
-                        file_name,
-                        self.settings.filter_files_regex,
-                    )
+                if (
+                        self.settings.filter_files_platform
+                        and file_type == "default"
+                        and not any(trait in self.settings.filter_files_platform for trait in file_traits)
+                ):
+                    # Setup for filter_files_platform is in config.py, including the trait listing.
+                    logging.info("File '%s' not for requested platforms, skipping", file_name)
+                    continue
+
+                if should_skip_item_by_glob("File", file_name, self.settings.filter_files_glob):
+                    continue
+
+                if should_skip_item_by_regex("File", file_name, self.settings.filter_files_regex):
                     continue
 
                 logging.debug(

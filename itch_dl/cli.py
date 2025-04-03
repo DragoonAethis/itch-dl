@@ -3,7 +3,7 @@ import sys
 import logging
 import argparse
 
-from .handlers import get_jobs_for_url_or_path
+from .handlers import get_jobs_for_url_or_path, preprocess_job_urls
 from .downloader import drive_downloads
 from .config import Settings, load_config
 from .keys import get_download_keys
@@ -50,6 +50,11 @@ def parse_args() -> argparse.Namespace:
                         help="print scraped game URLs without downloading them")
     parser.add_argument("--parallel", metavar="parallel", type=int, default=None,
                         help="how many threads to use for downloading games (default: 1)")
+
+    parser.add_argument("--filter-files-platform", metavar="platforms", action="extend", nargs='+',
+                        help="filter downloaded files by platform (windows, mac, linux, android, native)")
+    parser.add_argument("--filter-files-type", metavar="types", action="extend", nargs='+',
+                        help="filter downloaded files by type (see wiki for valid values)")
     parser.add_argument("--filter-files-glob", metavar="glob", default=None,
                         help="filter downloaded files with a shell-style glob/fnmatch (unmatched files are skipped)")
     parser.add_argument("--filter-files-regex", metavar="regex", default=None,
