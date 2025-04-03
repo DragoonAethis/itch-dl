@@ -51,4 +51,4 @@ target-version = "py310"
 [tool.ruff.lint]
 # https://docs.astral.sh/ruff/rules/
 select = ["F", "E", "N", "UP", "ANN", "S", "B", "A", "COM", "C4", "T10", "ISC", "LOG", "Q", "SIM", "TC", "ARG", "PGH", "PLE", "PLW", "RUF", "G"]
-ignore = ["COM812"]
+ignore = ["COM812", "LOG015"]

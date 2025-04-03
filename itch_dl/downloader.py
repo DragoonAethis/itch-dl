@@ -1,7 +1,6 @@
 import os
 import json
 import re
-import fnmatch
 import logging
 import urllib.parse
 import zipfile

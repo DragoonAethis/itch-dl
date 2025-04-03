@@ -52,13 +52,13 @@ def process_platform_traits(platforms: list[str]) -> list[str] | None:
     traits = set()
     for p in platforms:
         platform_trait = None
-        p = p.strip().lower().removeprefix("p_")
+        p = p.strip().lower().removeprefix("p_")  # noqa: PLW2901
 
         if p.startswith("native"):
-            p = platform.system().lower()
+            p = platform.system().lower()  # noqa: PLW2901
             if p.endswith("bsd"):
                 logging.warning("Note: Native downloads for *BSDs are not available - Linux binaries will be used.")
-                p = "linux"
+                p = "linux"  # noqa: PLW2901
 
         for key, trait in trait_mapping.items():
             if p.startswith(key):

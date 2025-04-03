@@ -37,7 +37,7 @@ def get_int_after_marker_in_json(text: str, marker: str, key: str) -> int | None
     return int(found_ints[0])
 
 
-def should_skip_item_by_glob(kind: Literal['File'] | Literal['URL'], item: str, glob: str):
+def should_skip_item_by_glob(kind: Literal["File"] | Literal["URL"], item: str, glob: str) -> bool:
     if glob and not fnmatch(item, glob):
         logging.info("%s '%s' does not match the glob filter '%s', skipping", kind, item, glob)
         return True
@@ -45,7 +45,7 @@ def should_skip_item_by_glob(kind: Literal['File'] | Literal['URL'], item: str, 
     return False
 
 
-def should_skip_item_by_regex(kind: Literal['File'] | Literal['URL'], item: str, regex: str):
+def should_skip_item_by_regex(kind: Literal["File"] | Literal["URL"], item: str, regex: str) -> bool:
     if regex and not re.fullmatch(regex, item):
         logging.info("%s '%s' does not match the regex filter '%s', skipping", kind, item, regex)
         return True

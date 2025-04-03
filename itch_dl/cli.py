@@ -51,9 +51,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--parallel", metavar="parallel", type=int, default=None,
                         help="how many threads to use for downloading games (default: 1)")
 
-    parser.add_argument("--filter-files-platform", metavar="platforms", action="extend", nargs='+',
+    parser.add_argument("--filter-files-platform", metavar="platforms", action="extend", nargs="+",
                         help="filter downloaded files by platform (windows, mac, linux, android, native)")
-    parser.add_argument("--filter-files-type", metavar="types", action="extend", nargs='+',
+    parser.add_argument("--filter-files-type", metavar="types", action="extend", nargs="+",
                         help="filter downloaded files by type (see wiki for valid values)")
     parser.add_argument("--filter-files-glob", metavar="glob", default=None,
                         help="filter downloaded files with a shell-style glob/fnmatch (unmatched files are skipped)")

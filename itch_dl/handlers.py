@@ -255,8 +255,8 @@ def get_jobs_for_url_or_path(path_or_url: str, settings: Settings) -> list[str]:
 
 def preprocess_job_urls(jobs: list[str], settings: Settings) -> list[str]:
     cleaned_jobs = set()
-    for job in jobs:
-        job = job.strip()
+    for base_job in jobs:
+        job = base_job.strip()
 
         if should_skip_item_by_glob("URL", job, settings.filter_urls_glob):
             continue
