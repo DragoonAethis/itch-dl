@@ -21,7 +21,8 @@ logging.getLogger().setLevel(logging.INFO)
 def parse_args() -> argparse.Namespace:
     # fmt: off
     parser = argparse.ArgumentParser(
-        description="Bulk download stuff from Itch.io.",
+        description="Bulk download stuff from Itch.io. "
+                    "Docs: https://github.com/DragoonAethis/itch-dl/wiki",
         epilog=(
             "Environment: "
             f"itch-dl {__version__}, "
@@ -52,7 +53,8 @@ def parse_args() -> argparse.Namespace:
                         help="how many threads to use for downloading games (default: 1)")
 
     parser.add_argument("--filter-files-platform", metavar="platforms", action="extend", nargs="+",
-                        help="filter downloaded files by platform (windows, mac, linux, android, native)")
+                        help="filter downloaded files by platform (windows, mac, linux, android, native), "
+                             "affects only executables")
     parser.add_argument("--filter-files-type", metavar="types", action="extend", nargs="+",
                         help="filter downloaded files by type (see wiki for valid values)")
     parser.add_argument("--filter-files-glob", metavar="glob", default=None,
