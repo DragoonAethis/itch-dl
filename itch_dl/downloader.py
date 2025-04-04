@@ -300,7 +300,7 @@ class GameDownloader:
                     errors.append(f"Upload metadata incomplete: {upload}")
                     continue
 
-                logging.info(upload)
+                logging.debug(upload)
                 upload_id = upload["id"]
                 file_name = upload["filename"]
                 file_type = upload["type"]
