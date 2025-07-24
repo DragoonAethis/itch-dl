@@ -85,6 +85,45 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> list[str]:
 
     return list(found_urls)
 
+def get_jobs_for_bundle_url(url: str, client: ItchApiClient) -> list[str]:
+    """
+    Bundles can be handled similarly to browse URLs, including pagination,
+    and without appending XML. This makes parsing slighyl less robust,
+    but still workable. Bundle pages are also paginated,
+    so we iterate over all pages until a 404 is returned.
+
+    NOTE: cookies may be needed to access the bundle page.
+    """
+    page = 1
+    found_urls: set[str] = set()
+    logging.info("Scraping game URLs from bundle page for %s", url)
+
+    while True:
+        logging.info("Downloading page %d (found %d URLs total)", page, len(found_urls))
+        r = client.get(f"{url}?page={page}", append_api_key=True)
+        if not r.ok:
+            logging.info("Bundle page %d returned %s, finished.", page, r.reason)
+            break
+
+        soup = BeautifulSoup(r.text, features="lxml")
+        game_title_links = soup.css.select(".game_title a")
+        if len(game_title_links) < 1:
+            logging.info("No more game titles, finished.")
+            break
+
+        logging.info("Found %d game titles.", len(game_title_links))
+        for link in game_title_links:
+            node_url = link['href']
+            if len(node_url) > 0:
+                logging.debug("Adding %s", node_url)
+                found_urls.add(node_url)
+
+        page += 1
+
+    if len(found_urls) == 0:
+        raise ItchDownloadError("No game URLs found to download.")
+
+    return list(found_urls)
 
 def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> list[str]:
     page = 1
@@ -171,7 +210,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> list[str]:
             return get_jobs_for_browse_url(clean_browse_url, client)
 
         elif site in ("b", "bundle"):  # Bundles
-            raise NotImplementedError("itch-dl cannot download bundles yet.")
+            return get_jobs_for_bundle_url(url, client)
 
         elif site in ("j", "jobs"):  # Jobs...
             raise ValueError("itch-dl cannot download a job.")
