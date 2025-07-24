@@ -5,16 +5,23 @@ from requests import Session
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
+import http.cookiejar
+
 from .consts import ITCH_API
 
 
 class ItchApiClient:
-    def __init__(self, api_key: str, user_agent: str, base_url: str | None = None) -> None:
+    def __init__(self, api_key: str, user_agent: str, cookies: str | None = None, base_url: str | None = None) -> None:
         self.base_url = base_url or ITCH_API
         self.api_key = api_key
 
         self.requests = Session()
         self.requests.headers["User-Agent"] = user_agent
+
+        if cookies is not None:
+            cj = http.cookiejar.MozillaCookieJar(cookies)
+            cj.load()
+            self.requests.cookies = cj
 
         retry_strategy = Retry(
             total=5,

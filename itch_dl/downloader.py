@@ -64,7 +64,7 @@ class GameDownloader:
     def __init__(self, settings: Settings, keys: dict[int, str]) -> None:
         self.settings = settings
         self.download_keys = keys
-        self.client = ItchApiClient(settings.api_key, settings.user_agent)
+        self.client = ItchApiClient(settings.api_key, settings.user_agent, settings.cookies)
 
     @staticmethod
     def get_rating_json(site: BeautifulSoup) -> dict | None:
