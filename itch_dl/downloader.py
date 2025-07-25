@@ -18,6 +18,7 @@ from .utils import ItchDownloadError, get_int_after_marker_in_json, should_skip_
 from .consts import ITCH_GAME_URL_REGEX
 from .config import Settings
 from .infobox import parse_infobox, InfoboxMetadata
+from .keys import get_download_keys
 
 TARGET_PATHS = {
     "site": "site.html",
@@ -29,11 +30,12 @@ TARGET_PATHS = {
 
 
 class DownloadResult:
-    def __init__(self, url: str, success: bool, errors: list[str] | None, external_urls: list[str]) -> None:
+    def __init__(self, url: str, success: bool, errors: list[str] | None, external_urls: list[str], retry: bool = False) -> None:
         self.url = url
         self.success = success
         self.errors = errors or []
         self.external_urls = external_urls or []
+        self.retry = retry
 
 
 class GameMetadata(TypedDict, total=False):
@@ -291,6 +293,27 @@ class GameDownloader:
             return DownloadResult(url, False, [f"Could not fetch game uploads for {title}: {e}"], [])
 
         game_uploads = game_uploads_req.json()["uploads"]
+        if len(game_uploads) < 1:
+            # check to see if the user owns the game through a bundle, unclaimed
+            claims = site.css.select("input[value='claim']")
+            if len(claims) > 0:
+                logging.info("No uploads found, but game can be claimed")
+                form = claims[0].parent
+                if form['method'] != 'post':
+                    logging.error("Unknown claim method %s", game_title, form['method'])
+                else:
+                    form_data = {}
+                    for element in form.find_all('input'):
+                        form_data[element['name']] = element['value']
+                    logging.debug("%s", str(form_data))
+                    try:
+                        claim_url = form['action']
+                        claim_r = self.client.post(claim_url, data=form_data)
+                        logging.info("%s claimed, will retry download at the end", title)
+                        return DownloadResult(url, False, [f"Claimed but not downloaded {title}"], [], True)
+                    except Exception as e:
+                        return DownloadResult(url, False, [f"Could not claim game {title}: {e}"], [])
+
         logging.debug("Found %d upload(s): %s", len(game_uploads), str(game_uploads))
 
         external_urls = []
@@ -411,6 +434,20 @@ class GameDownloader:
         logging.info("Finished job %s (%s)", url, title)
         return DownloadResult(url, len(errors) == 0, errors, external_urls)
 
+def collect_downloads(
+    downloader: GameDownloader,
+    jobs: list[str],
+    settings: Settings,
+    **tqdm_args
+) -> None:
+
+    skip_downloaded = not settings.refresh_files
+    if settings.parallel > 1:
+        return thread_map(lambda u: downloader.download(u, skip_downloaded), jobs, max_workers=settings.parallel, **tqdm_args)
+    else:
+        return [downloader.download(job, skip_downloaded) for job in tqdm(jobs, **tqdm_args)]
+
+
 
 def drive_downloads(
     jobs: list[str],
@@ -423,11 +460,18 @@ def drive_downloads(
         "unit": "game",
     }
 
-    skip_downloaded = not settings.refresh_files
-    if settings.parallel > 1:
-        results = thread_map(lambda u: downloader.download(u, skip_downloaded), jobs, max_workers=settings.parallel, **tqdm_args)
-    else:
-        results = [downloader.download(job, skip_downloaded) for job in tqdm(jobs, **tqdm_args)]
+    results = collect_downloads(downloader, jobs, settings, **tqdm_args)
+
+    retry_jobs = [r.url for r in results if r.retry]
+
+    if len(retry_jobs) > 0:
+        done = [r for r in results if not r.retry]
+        # re-fetch keys
+        downloader.keys = get_download_keys(downloader.client)
+
+        # re-fetch games
+        retried = collect_downloads(downloader, retry_jobs, settings, **tqdm_args)
+        results = done + retried
 
     print("Download complete!")
     for result in results:
