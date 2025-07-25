@@ -138,8 +138,14 @@ def get_jobs_for_bundle_url(url: str, client: ItchApiClient) -> list[str]:
                     found_claims.append({'title': game_title, 'url': game_url, 'form_data': form_data})
 
             if len(game_url) > 0:
-                logging.debug("Adding %s at %s", game_title, game_url)
-                found_urls.add(game_url)
+                # remove the /download/<INVOICE_ID> part if present
+                download_invoice_offset = game_url.find("/download/")
+                if download_invoice_offset < 0:
+                    clean_url = game_url
+                else:
+                    clean_url = game_url[0:download_invoice_offset]
+                logging.debug("Adding %s at %s", game_title, clean_url)
+                found_urls.add(clean_url)
 
         page += 1
 
