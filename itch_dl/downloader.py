@@ -247,6 +247,9 @@ class GameDownloader:
 
         return None
 
+    # TODO: skip_downloaded should be made into a at least a tristate
+    # (skip, update modified, redownload everything) if not something
+    # even more sophisticated.
     def download(self, url: str, skip_downloaded: bool = True) -> DownloadResult:
         match = re.match(ITCH_GAME_URL_REGEX, url)
         if not match:
@@ -420,10 +423,11 @@ def drive_downloads(
         "unit": "game",
     }
 
+    skip_downloaded = not settings.refresh_files
     if settings.parallel > 1:
-        results = thread_map(downloader.download, jobs, max_workers=settings.parallel, **tqdm_args)
+        results = thread_map(lambda u: downloader.download(u, skip_downloaded), jobs, max_workers=settings.parallel, **tqdm_args)
     else:
-        results = [downloader.download(job) for job in tqdm(jobs, **tqdm_args)]
+        results = [downloader.download(job, skip_downloaded) for job in tqdm(jobs, **tqdm_args)]
 
     print("Download complete!")
     for result in results:

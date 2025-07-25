@@ -47,6 +47,9 @@ def parse_args() -> argparse.Namespace:
                         help="user agent to use when sending HTTP requests")
     parser.add_argument("--download-to", metavar="path", default=None,
                         help="directory to save results into (default: current working dir)")
+    parser.add_argument("--refresh-files", metavar="refresh_files", type=bool, default=False,
+                        action=argparse.BooleanOptionalAction,
+                        help="redownload files for games that were already downloaded")
     parser.add_argument("--mirror-web", action="store_true",
                         help="try to fetch assets on game sites")
     parser.add_argument("--urls-only", action="store_true",
@@ -82,6 +85,7 @@ def run() -> int:
         logging.getLogger().setLevel(logging.DEBUG)
 
     settings: Settings = load_config(args, profile=args.profile)
+
     if settings.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 

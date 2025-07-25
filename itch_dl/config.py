@@ -24,6 +24,7 @@ class Settings:
     mirror_web: bool = False
     urls_only: bool = False
     parallel: int = 1
+    refresh_files: bool = False
 
     filter_files_platform: list | None = None
     filter_files_type: list | None = None
