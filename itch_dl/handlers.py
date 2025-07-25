@@ -247,7 +247,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> list[str]:
         raise ValueError(f"Unknown domain: {url_parts.netloc}")
 
 
-def get_jobs_for_path(path: str) -> list[str]:
+def get_jobs_for_path(path: str, settings: Settings) -> list[str]:
     try:  # Game Jam Entries JSON?
         with open(path, "rb") as f:
             json_data = json.load(f)
@@ -270,7 +270,10 @@ def get_jobs_for_path(path: str) -> list[str]:
 
     if len(url_list) > 0:
         logging.info("Parsing provided file as a list of URLs to fetch...")
-        return url_list
+        # The list may include links to bundles and collections,
+        # in which case we want to expand those to a list of games.
+        client = ItchApiClient(settings.api_key, settings.user_agent, settings.cookies)
+        return sum([get_jobs_for_itch_url(url, client) for url in url_list], start=[])
 
     raise ValueError("File format is unknown - cannot read URLs to download.")
 
@@ -287,10 +290,9 @@ def get_jobs_for_url_or_path(path_or_url: str, settings: Settings) -> list[str]:
         client = ItchApiClient(settings.api_key, settings.user_agent, settings.cookies)
         return get_jobs_for_itch_url(path_or_url, client)
     elif os.path.isfile(path_or_url):
-        return get_jobs_for_path(path_or_url)
+        return get_jobs_for_path(path_or_url, settings)
     else:
         raise NotImplementedError(f"Cannot handle path or URL: {path_or_url}")
-
 
 def preprocess_job_urls(jobs: list[str], settings: Settings) -> list[str]:
     cleaned_jobs = set()
