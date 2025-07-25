@@ -65,3 +65,34 @@ class ItchApiClient:
             r.encoding = "utf-8"
 
         return r
+
+    def post(
+        self,
+        endpoint: str,
+        append_api_key: bool = True,
+        guess_encoding: bool = False,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> requests.Response:
+        """Wrapper around `requests.post`.
+
+        :param endpoint: Path to fetch on the specified base URL.
+        :param append_api_key: Send an authenticated API request.
+        :param guess_encoding: Let requests guess the response encoding.
+        """
+        if append_api_key:
+            params = kwargs.get("data") or {}
+
+            if "api_key" not in params:
+                params["api_key"] = self.api_key
+
+            kwargs["data"] = params
+
+        url = endpoint if endpoint.startswith("https://") else self.base_url + endpoint
+        r = self.requests.post(url, **kwargs)
+
+        # Itch always returns UTF-8 pages and API responses. Force
+        # UTF-8 everywhere, except for binary file downloads.
+        if not guess_encoding:
+            r.encoding = "utf-8"
+
+        return r

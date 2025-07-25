@@ -88,14 +88,19 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> list[str]:
 def get_jobs_for_bundle_url(url: str, client: ItchApiClient) -> list[str]:
     """
     Bundles can be handled similarly to browse URLs, including pagination,
-    and without appending XML. This makes parsing slighyl less robust,
+    and without appending XML. This makes parsing slightly less robust,
     but still workable. Bundle pages are also paginated,
     so we iterate over all pages until a 404 is returned.
+
+    Unclaimed titles will need to be claimed before they can be accessed.
+    We do this while processing the bundle, so that the download keys are available
+    at later stages.
 
     NOTE: cookies may be needed to access the bundle page.
     """
     page = 1
     found_urls: set[str] = set()
+    found_claims = []
     logging.info("Scraping game URLs from bundle page for %s", url)
 
     while True:
@@ -106,22 +111,46 @@ def get_jobs_for_bundle_url(url: str, client: ItchApiClient) -> list[str]:
             break
 
         soup = BeautifulSoup(r.text, features="lxml")
-        game_title_links = soup.css.select(".game_title a")
-        if len(game_title_links) < 1:
-            logging.info("No more game titles, finished.")
+
+        games = soup.css.select("div.game_row")
+        if len(games) < 1:
+            logging.info("No more games, finished.")
             break
 
-        logging.info("Found %d game titles.", len(game_title_links))
-        for link in game_title_links:
-            node_url = link['href']
-            if len(node_url) > 0:
-                logging.debug("Adding %s", node_url)
-                found_urls.add(node_url)
+        logging.info("Found %d games.", len(games))
+
+        for game in games:
+            game_title_link = game.css.select(".game_title a")[0]
+            game_title = game_title_link.text
+            game_url = game_title_link['href']
+            claims = game.css.select("button[value='claim']")
+            claimed = len(claims) < 1
+            logging.debug("Found %s (%s). Claimed: %s", game_title, game_url, claimed)
+            if not claimed:
+                form = claims[0].parent
+                if form['method'] != 'post':
+                    logging.error("Failed to claim %s: unknown claim method %s", game_title, form['method'])
+                else:
+                    form_data = {'action': 'claim'}
+                    for element in form.find_all('input'):
+                        form_data[element['name']] = element['value']
+                    logging.debug("%s", str(form_data))
+                    found_claims.append({'title': game_title, 'url': game_url, 'form_data': form_data})
+
+            if len(game_url) > 0:
+                logging.debug("Adding %s at %s", game_title, game_url)
+                found_urls.add(game_url)
 
         page += 1
 
     if len(found_urls) == 0:
         raise ItchDownloadError("No game URLs found to download.")
+
+    if len(found_claims) > 0:
+        for claim in found_claims:
+            claim_r = client.post(url, data=claim['form_data'])
+            if not claim_r.ok:
+                logging.error("Failed to claim %s (%s). Reason: %s", claim['title'], claim['url'], claim_r.reason)
 
     return list(found_urls)
 
