@@ -3,7 +3,7 @@ name = "itch-dl"
 dynamic = ["version"]
 description = "itch.io bulk game downloader"
 authors = [{ name = "Dragoon Aethis", email = "dragoon@dragonic.eu" }]
-requires-python = "~=3.10"
+requires-python = ">=3.10.0"
 readme = "README.md"
 license = "MIT"
 classifiers = [
@@ -15,11 +15,11 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "tqdm>=4.67.1,<5",
-    "urllib3>=2.3.0,<3",
-    "requests>=2.32.3,<3",
-    "beautifulsoup4>=4.13.3,<5",
-    "lxml>=5.3.1,<6",
+    "tqdm>=4.67.3,<5",
+    "urllib3>=2.6.3,<3",
+    "requests>=2.32.5,<3",
+    "beautifulsoup4>=4.14.3,<5",
+    "lxml>=6.0.2,<7",
 ]
 
 [project.urls]
