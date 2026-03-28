@@ -67,6 +67,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--filter-urls-regex", metavar="regex", default=None,
                         help="filter itch URLs with a Python regex (unmatched URLs are skipped)")
 
+    parser.add_argument("--hh-export", action="store_true",
+                        help="Export Homebrew Hub compliant entries")
     parser.add_argument("--verbose", action="store_true",
                         help="print verbose logs")
 

@@ -25,6 +25,7 @@ TARGET_PATHS = {
     "metadata": "metadata.json",
     "files": "files",
     "screenshots": "screenshots",
+    "hh-metadata": "game.json"
 }
 
 
@@ -247,6 +248,69 @@ class GameDownloader:
 
         return None
 
+    def map_metadata_to_hh(self, metadata, romfile, slug, cover_filename):
+        tags = []
+
+        metadata_hh = {
+            "$schema": "https://raw.githubusercontent.com/gbdev/database/refs/heads/master/schemas/game-schema-d5.json",
+            "slug": slug,
+            "title": metadata["title"],
+            "screenshots": [ cover_filename ] + [f"screenshots/{url.split('/')[-1]}" for url in metadata["screenshots"]],
+            "typetag": "game",
+            "platform": os.path.splitext(romfile)[1].upper().lstrip('.')
+        }
+
+        source_code_found = False
+        if "links" in metadata["extra"]:
+            for link_name, link in metadata["extra"]["links"].items():
+                if any(key in link_name.lower() for key in ("github", "source", "repo")):
+                    metadata_hh["repository"] = link
+                    source_code_found = True
+        if "code_license" in metadata["extra"]:
+            for value in metadata["extra"]["code_license"].keys():
+                if source_code_found:
+                    metadata_hh["gameLicense"] = value
+
+        #tags = metadata["tags"].keys()
+        tags = []
+        hh_tag_list = [
+            "Arcade", "RPG", "Open Source", "Adventure", "Action", "Puzzle", "Platform",
+            "gbajam21", "gbcompo21", "gbcompo21-shortlist", "gb-showdown-22", "Survival",
+            "Shooter", "Visual Novel", "Simulation", "Educational", "Rhythm", "Card Game",
+            "Strategy", "Racing", "Sports", "Fighting", "Interactive Fiction", "2D",
+            "Arena", "Butano"
+        ]
+
+        # Add first genre if it exists
+        genre_keys = metadata.get("extra", {}).get("genre", {})
+        if genre_keys:
+            first_genre = next(iter(genre_keys)).lower()
+            tags.append(first_genre)
+
+        # Add all tag keys, lowercased
+        tag_keys = metadata.get("extra", {}).get("tags", {})
+        tags.extend(key.lower() for key in tag_keys)
+
+        # Create a lowercase map of hh_tag_list for matching
+        hh_tag_map = {tag.lower(): tag for tag in hh_tag_list}
+
+        # Match and return tags in original casing from hh_tag_list
+        metadata_hh["tags"] = [hh_tag_map[tag] for tag in set(tags) if tag in hh_tag_map]
+
+        metadata_hh["files"] = [
+            {
+                "default": True,
+                "filename": f"files/{romfile}",
+                "playable": True
+            }]
+
+        metadata_hh["developer"] = metadata["author"]
+
+        # metadata_hh["date"] = metadata["published_at"]
+        metadata_hh["website"] = metadata["url"]
+
+        return metadata_hh
+
     def download(self, url: str, skip_downloaded: bool = True) -> DownloadResult:
         match = re.match(ITCH_GAME_URL_REGEX, url)
         if not match:
@@ -255,6 +319,11 @@ class GameDownloader:
         author, game = match["author"], match["game"]
 
         download_path = os.path.join(self.settings.download_to, author, game)
+
+        if self.settings.hh_export:
+            slug = f"{author}_{game}"
+            download_path = os.path.join(self.settings.download_to, slug)
+
         os.makedirs(download_path, exist_ok=True)
 
         paths: dict[str, str] = {k: os.path.join(download_path, v) for k, v in TARGET_PATHS.items()}
@@ -295,6 +364,7 @@ class GameDownloader:
 
         try:
             os.makedirs(paths["files"], exist_ok=True)
+            romfile = None
             for upload in game_uploads:
                 if any(key not in upload for key in ("id", "filename", "type", "traits", "storage")):
                     errors.append(f"Upload metadata incomplete: {upload}")
@@ -366,6 +436,29 @@ class GameDownloader:
                         f"expected {expected_size} for upload {upload}"
                     )
 
+                if file_name.lower().endswith(('.gb', '.gbc', '.gba')):
+                    romfile = file_name
+
+            if romfile is None:
+                for filename in os.listdir(paths["files"]):
+                    if filename.lower().endswith(".zip"):
+                        zip_path = os.path.join(paths["files"], filename)
+                        try:
+                            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                                zip_ref.extractall(paths["files"])  # Extract all files
+
+                                for zip_info in zip_ref.infolist():
+                                    if zip_info.filename.lower().endswith(('.gb', '.gbc', '.gba')):
+                                        romfile = os.path.basename(zip_info.filename)
+                                        break
+                            os.remove(zip_path)  # Remove the archive after extraction
+
+                            if romfile:
+                                break
+                        except zipfile.BadZipFile:
+                            errors.append(f"Bad zip file: {zip_path}")
+
+
             logging.debug("Done downloading files for %s", title)
         except Exception as e:
             errors.append(f"Download failed for {title}: {e}")
@@ -390,17 +483,24 @@ class GameDownloader:
                     errors.append(f"Screenshot download failed (this is not fatal): {e}")
 
         cover_url = metadata.get("cover_url")
+        cover_filename = os.path.basename(paths["cover"] + os.path.splitext(cover_url)[-1])
         if cover_url:
             try:
                 self.download_file(cover_url, paths["cover"] + os.path.splitext(cover_url)[-1], credentials={})
             except Exception as e:
                 errors.append(f"Cover art download failed (this is not fatal): {e}")
 
-        with open(paths["site"], "wb") as f:
-            f.write(site.prettify(encoding="utf-8"))
+        if not self.settings.hh_export:
+            # Skip those downloads when creating an Homebrew Hub export
+            with open(paths["site"], "wb") as f:
+                f.write(site.prettify(encoding="utf-8"))
 
-        with open(paths["metadata"], "w") as f:
-            json.dump(metadata, f, indent=4)
+            with open(paths["metadata"], "w") as f:
+                json.dump(metadata, f, indent=4)
+        else:
+            metadata_hh = self.map_metadata_to_hh(metadata, romfile, slug, cover_filename)
+            with open(paths["hh-metadata"], "w") as f:
+                json.dump(metadata_hh, f, indent=4)
 
         if len(errors) > 0:
             logging.error("Game %s has download errors: %s", title, errors)
