@@ -248,7 +248,7 @@ class GameDownloader:
 
         return None
 
-    def map_metadata_to_hh(self, metadata, romfile, slug, cover_filename):
+    def map_metadata_to_hh(self, metadata: GameMetadata, romfile: str, slug: str, cover_filename: str) -> dict:
         tags = []
 
         metadata_hh = {
@@ -266,8 +266,9 @@ class GameDownloader:
                 if any(key in link_name.lower() for key in ("github", "source", "repo")):
                     metadata_hh["repository"] = link
                     source_code_found = True
+
         if "code_license" in metadata["extra"]:
-            for value in metadata["extra"]["code_license"].keys():
+            for value in metadata["extra"]["code_license"].keys():  # noqa: SIM118
                 if source_code_found:
                     metadata_hh["gameLicense"] = value
 
