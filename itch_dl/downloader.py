@@ -460,24 +460,27 @@ class GameDownloader:
                 if file_name.lower().endswith((".gb", ".gbc", ".gba")):
                     romfile = file_name
 
-            if romfile is None:
+            if self.settings.hh_export and romfile is None:
                 for filename in os.listdir(paths["files"]):
-                    if filename.lower().endswith(".zip"):
-                        zip_path = os.path.join(paths["files"], filename)
-                        try:
-                            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                                zip_ref.extractall(paths["files"])  # Extract all files
+                    if not filename.lower().endswith(".zip"):
+                        continue
 
-                                for zip_info in zip_ref.infolist():
-                                    if zip_info.filename.lower().endswith((".gb", ".gbc", ".gba")):
-                                        romfile = os.path.basename(zip_info.filename)
-                                        break
-                            os.remove(zip_path)  # Remove the archive after extraction
+                    zip_path = os.path.join(paths["files"], filename)
+                    try:
+                        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                            # Extract all files
+                            zip_ref.extractall(paths["files"])  # noqa: S202
 
-                            if romfile:
-                                break
-                        except zipfile.BadZipFile:
-                            errors.append(f"Bad zip file: {zip_path}")
+                            for zip_info in zip_ref.infolist():
+                                if zip_info.filename.lower().endswith((".gb", ".gbc", ".gba")):
+                                    romfile = os.path.basename(zip_info.filename)
+                                    break
+                        os.remove(zip_path)  # Remove the archive after extraction
+
+                        if romfile:
+                            break
+                    except zipfile.BadZipFile:
+                        errors.append(f"Bad zip file: {zip_path}")
 
             logging.debug("Done downloading files for %s", title)
         except Exception as e:
