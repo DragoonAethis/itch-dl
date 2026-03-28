@@ -85,6 +85,80 @@ def get_jobs_for_browse_url(url: str, client: ItchApiClient) -> list[str]:
 
     return list(found_urls)
 
+def get_jobs_for_bundle_url(url: str, client: ItchApiClient) -> list[str]:
+    """
+    Bundles can be handled similarly to browse URLs, including pagination,
+    and without appending XML. This makes parsing slightly less robust,
+    but still workable. Bundle pages are also paginated,
+    so we iterate over all pages until a 404 is returned.
+
+    Unclaimed titles will need to be claimed before they can be accessed.
+    We do this while processing the bundle, so that the download keys are available
+    at later stages.
+
+    NOTE: cookies may be needed to access the bundle page.
+    """
+    page = 1
+    found_urls: set[str] = set()
+    found_claims = []
+    logging.info("Scraping game URLs from bundle page for %s", url)
+
+    while True:
+        logging.info("Downloading page %d (found %d URLs total)", page, len(found_urls))
+        r = client.get(f"{url}?page={page}", append_api_key=True)
+        if not r.ok:
+            logging.info("Bundle page %d returned %s, finished.", page, r.reason)
+            break
+
+        soup = BeautifulSoup(r.text, features="lxml")
+
+        games = soup.css.select("div.game_row")
+        if len(games) < 1:
+            logging.info("No more games, finished.")
+            break
+
+        logging.info("Found %d games.", len(games))
+
+        for game in games:
+            game_title_link = game.css.select(".game_title a")[0]
+            game_title = game_title_link.text
+            game_url = game_title_link['href']
+            claims = game.css.select("button[value='claim']")
+            claimed = len(claims) < 1
+            logging.debug("Found %s (%s). Claimed: %s", game_title, game_url, claimed)
+            if not claimed:
+                form = claims[0].parent
+                if form['method'] != 'post':
+                    logging.error("Failed to claim %s: unknown claim method %s", game_title, form['method'])
+                else:
+                    form_data = {'action': 'claim'}
+                    for element in form.find_all('input'):
+                        form_data[element['name']] = element['value']
+                    logging.debug("%s", str(form_data))
+                    found_claims.append({'title': game_title, 'url': game_url, 'form_data': form_data})
+
+            if len(game_url) > 0:
+                # remove the /download/<INVOICE_ID> part if present
+                download_invoice_offset = game_url.find("/download/")
+                if download_invoice_offset < 0:
+                    clean_url = game_url
+                else:
+                    clean_url = game_url[0:download_invoice_offset]
+                logging.debug("Adding %s at %s", game_title, clean_url)
+                found_urls.add(clean_url)
+
+        page += 1
+
+    if len(found_urls) == 0:
+        raise ItchDownloadError("No game URLs found to download.")
+
+    if len(found_claims) > 0:
+        for claim in found_claims:
+            claim_r = client.post(url, data=claim['form_data'])
+            if not claim_r.ok:
+                logging.error("Failed to claim %s (%s). Reason: %s", claim['title'], claim['url'], claim_r.reason)
+
+    return list(found_urls)
 
 def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> list[str]:
     page = 1
@@ -171,7 +245,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> list[str]:
             return get_jobs_for_browse_url(clean_browse_url, client)
 
         elif site in ("b", "bundle"):  # Bundles
-            raise NotImplementedError("itch-dl cannot download bundles yet.")
+            return get_jobs_for_bundle_url(url, client)
 
         elif site in ("j", "jobs"):  # Jobs...
             raise ValueError("itch-dl cannot download a job.")
@@ -208,7 +282,7 @@ def get_jobs_for_itch_url(url: str, client: ItchApiClient) -> list[str]:
         raise ValueError(f"Unknown domain: {url_parts.netloc}")
 
 
-def get_jobs_for_path(path: str) -> list[str]:
+def get_jobs_for_path(path: str, settings: Settings) -> list[str]:
     try:  # Game Jam Entries JSON?
         with open(path, "rb") as f:
             json_data = json.load(f)
@@ -231,7 +305,10 @@ def get_jobs_for_path(path: str) -> list[str]:
 
     if len(url_list) > 0:
         logging.info("Parsing provided file as a list of URLs to fetch...")
-        return url_list
+        # The list may include links to bundles and collections,
+        # in which case we want to expand those to a list of games.
+        client = ItchApiClient(settings.api_key, settings.user_agent, settings.cookies)
+        return sum([get_jobs_for_itch_url(url, client) for url in url_list], start=[])
 
     raise ValueError("File format is unknown - cannot read URLs to download.")
 
@@ -245,13 +322,12 @@ def get_jobs_for_url_or_path(path_or_url: str, settings: Settings) -> list[str]:
         path_or_url = "https://" + path_or_url[7:]
 
     if path_or_url.startswith("https://"):
-        client = ItchApiClient(settings.api_key, settings.user_agent)
+        client = ItchApiClient(settings.api_key, settings.user_agent, settings.cookies)
         return get_jobs_for_itch_url(path_or_url, client)
     elif os.path.isfile(path_or_url):
-        return get_jobs_for_path(path_or_url)
+        return get_jobs_for_path(path_or_url, settings)
     else:
         raise NotImplementedError(f"Cannot handle path or URL: {path_or_url}")
-
 
 def preprocess_job_urls(jobs: list[str], settings: Settings) -> list[str]:
     cleaned_jobs = set()

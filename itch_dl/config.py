@@ -18,11 +18,13 @@ class Settings:
 
     api_key: str | None = None
     user_agent: str = f"python-requests/{requests.__version__} itch-dl/{__version__}"
+    cookies: str | None = None
 
     download_to: str | None = None
     mirror_web: bool = False
     urls_only: bool = False
     parallel: int = 1
+    refresh_files: bool = False
 
     filter_files_platform: list | None = None
     filter_files_type: list | None = None

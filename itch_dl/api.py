@@ -5,16 +5,23 @@ from requests import Session
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
+import http.cookiejar
+
 from .consts import ITCH_API
 
 
 class ItchApiClient:
-    def __init__(self, api_key: str, user_agent: str, base_url: str | None = None) -> None:
+    def __init__(self, api_key: str, user_agent: str, cookies: str | None = None, base_url: str | None = None) -> None:
         self.base_url = base_url or ITCH_API
         self.api_key = api_key
 
         self.requests = Session()
         self.requests.headers["User-Agent"] = user_agent
+
+        if cookies is not None:
+            cj = http.cookiejar.MozillaCookieJar(cookies)
+            cj.load()
+            self.requests.cookies = cj
 
         retry_strategy = Retry(
             total=5,
@@ -51,6 +58,37 @@ class ItchApiClient:
 
         url = endpoint if endpoint.startswith("https://") else self.base_url + endpoint
         r = self.requests.get(url, **kwargs)
+
+        # Itch always returns UTF-8 pages and API responses. Force
+        # UTF-8 everywhere, except for binary file downloads.
+        if not guess_encoding:
+            r.encoding = "utf-8"
+
+        return r
+
+    def post(
+        self,
+        endpoint: str,
+        append_api_key: bool = True,
+        guess_encoding: bool = False,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> requests.Response:
+        """Wrapper around `requests.post`.
+
+        :param endpoint: Path to fetch on the specified base URL.
+        :param append_api_key: Send an authenticated API request.
+        :param guess_encoding: Let requests guess the response encoding.
+        """
+        if append_api_key:
+            params = kwargs.get("data") or {}
+
+            if "api_key" not in params:
+                params["api_key"] = self.api_key
+
+            kwargs["data"] = params
+
+        url = endpoint if endpoint.startswith("https://") else self.base_url + endpoint
+        r = self.requests.post(url, **kwargs)
 
         # Itch always returns UTF-8 pages and API responses. Force
         # UTF-8 everywhere, except for binary file downloads.
