@@ -3,7 +3,7 @@ import sys
 import logging
 import argparse
 
-from .handlers import get_jobs_for_url_or_path
+from .handlers import get_jobs_for_url_or_path, preprocess_job_urls
 from .downloader import drive_downloads
 from .config import Settings, load_config
 from .keys import get_download_keys
@@ -21,7 +21,8 @@ logging.getLogger().setLevel(logging.INFO)
 def parse_args() -> argparse.Namespace:
     # fmt: off
     parser = argparse.ArgumentParser(
-        description="Bulk download stuff from Itch.io.",
+        description="Bulk download stuff from Itch.io. "
+                    "Docs: https://github.com/DragoonAethis/itch-dl/wiki",
         epilog=(
             "Environment: "
             f"itch-dl {__version__}, "
@@ -50,10 +51,22 @@ def parse_args() -> argparse.Namespace:
                         help="print scraped game URLs without downloading them")
     parser.add_argument("--parallel", metavar="parallel", type=int, default=None,
                         help="how many threads to use for downloading games (default: 1)")
+
+    parser.add_argument("--filter-files-platform", metavar="platforms", action="extend", nargs="+",
+                        help="filter downloaded files by platform (windows, mac, linux, android, native), "
+                             "affects only executables")
+    parser.add_argument("--filter-files-type", metavar="types", action="extend", nargs="+",
+                        help="filter downloaded files by type (see wiki for valid values)")
     parser.add_argument("--filter-files-glob", metavar="glob", default=None,
                         help="filter downloaded files with a shell-style glob/fnmatch (unmatched files are skipped)")
     parser.add_argument("--filter-files-regex", metavar="regex", default=None,
                         help="filter downloaded files with a Python regex (unmatched files are skipped)")
+
+    parser.add_argument("--filter-urls-glob", metavar="glob", default=None,
+                        help="filter itch URLs with a shell-style glob/fnmatch (unmatched URLs are skipped)")
+    parser.add_argument("--filter-urls-regex", metavar="regex", default=None,
+                        help="filter itch URLs with a Python regex (unmatched URLs are skipped)")
+
     parser.add_argument("--hh-export", action="store_true",
                         help="Export Homebrew Hub compliant entries")
     parser.add_argument("--verbose", action="store_true",
@@ -91,8 +104,10 @@ def run() -> int:
         )
 
     jobs = get_jobs_for_url_or_path(url_or_path, settings)
-    jobs = list(set(jobs))  # Deduplicate, just in case...
-    logging.info("Found %d URL(s).", len(jobs))
+    logging.info("Found %d URL(s) total.", len(jobs))
+
+    jobs = preprocess_job_urls(jobs, settings)
+    logging.info("Will process %d URL(s) after filtering and deduplication.", len(jobs))
 
     if len(jobs) == 0:
         sys.exit("No URLs to download.")
