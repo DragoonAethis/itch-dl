@@ -25,6 +25,7 @@ dependencies = [
 [project.urls]
 GitHub = "https://github.com/DragoonAethis/itch-dl"
 Wiki = "https://github.com/DragoonAethis/itch-dl/wiki"
+Changelog = "https://github.com/DragoonAethis/itch-dl/releases"
 Issues = "https://github.com/DragoonAethis/itch-dl/issues"
 Donate = "https://ko-fi.com/dragoonaethis"
 
