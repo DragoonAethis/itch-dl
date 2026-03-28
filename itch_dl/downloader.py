@@ -25,7 +25,7 @@ TARGET_PATHS = {
     "metadata": "metadata.json",
     "files": "files",
     "screenshots": "screenshots",
-    "hh-metadata": "game.json"
+    "hh-metadata": "game.json",
 }
 
 
@@ -255,9 +255,9 @@ class GameDownloader:
             "$schema": "https://raw.githubusercontent.com/gbdev/database/refs/heads/master/schemas/game-schema-d5.json",
             "slug": slug,
             "title": metadata["title"],
-            "screenshots": [ cover_filename ] + [f"screenshots/{url.split('/')[-1]}" for url in metadata["screenshots"]],
+            "screenshots": [cover_filename] + [f"screenshots/{url.split('/')[-1]}" for url in metadata["screenshots"]],
             "typetag": "game",
-            "platform": os.path.splitext(romfile)[1].upper().lstrip('.')
+            "platform": os.path.splitext(romfile)[1].upper().lstrip("."),
         }
 
         source_code_found = False
@@ -271,14 +271,35 @@ class GameDownloader:
                 if source_code_found:
                     metadata_hh["gameLicense"] = value
 
-        #tags = metadata["tags"].keys()
+        # tags = metadata["tags"].keys()
         tags = []
         hh_tag_list = [
-            "Arcade", "RPG", "Open Source", "Adventure", "Action", "Puzzle", "Platform",
-            "gbajam21", "gbcompo21", "gbcompo21-shortlist", "gb-showdown-22", "Survival",
-            "Shooter", "Visual Novel", "Simulation", "Educational", "Rhythm", "Card Game",
-            "Strategy", "Racing", "Sports", "Fighting", "Interactive Fiction", "2D",
-            "Arena", "Butano"
+            "2D",
+            "Action",
+            "Adventure",
+            "Arcade",
+            "Arena",
+            "Butano",
+            "Card Game",
+            "Educational",
+            "Fighting",
+            "Interactive Fiction",
+            "Open Source",
+            "Platform",
+            "Puzzle",
+            "RPG",
+            "Racing",
+            "Rhythm",
+            "Shooter",
+            "Simulation",
+            "Sports",
+            "Strategy",
+            "Survival",
+            "Visual Novel",
+            "gb-showdown-22",
+            "gbajam21",
+            "gbcompo21",
+            "gbcompo21-shortlist",
         ]
 
         # Add first genre if it exists
@@ -297,12 +318,11 @@ class GameDownloader:
         # Match and return tags in original casing from hh_tag_list
         metadata_hh["tags"] = [hh_tag_map[tag] for tag in set(tags) if tag in hh_tag_map]
 
-        metadata_hh["files"] = [
-            {
-                "default": True,
-                "filename": f"files/{romfile}",
-                "playable": True
-            }]
+        metadata_hh["files"] = [{
+            "default": True,
+            "filename": f"files/{romfile}",
+            "playable": True,
+        }]
 
         metadata_hh["developer"] = metadata["author"]
 
@@ -383,9 +403,9 @@ class GameDownloader:
                     continue
 
                 if (
-                        self.settings.filter_files_platform
-                        and file_type == "default"
-                        and not any(trait in self.settings.filter_files_platform for trait in file_traits)
+                    self.settings.filter_files_platform
+                    and file_type == "default"
+                    and not any(trait in self.settings.filter_files_platform for trait in file_traits)
                 ):
                     # Setup for filter_files_platform is in config.py, including the trait listing.
                     logging.info("File '%s' not for requested platforms, skipping", file_name)
@@ -436,7 +456,7 @@ class GameDownloader:
                         f"expected {expected_size} for upload {upload}"
                     )
 
-                if file_name.lower().endswith(('.gb', '.gbc', '.gba')):
+                if file_name.lower().endswith((".gb", ".gbc", ".gba")):
                     romfile = file_name
 
             if romfile is None:
@@ -444,11 +464,11 @@ class GameDownloader:
                     if filename.lower().endswith(".zip"):
                         zip_path = os.path.join(paths["files"], filename)
                         try:
-                            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                            with zipfile.ZipFile(zip_path, "r") as zip_ref:
                                 zip_ref.extractall(paths["files"])  # Extract all files
 
                                 for zip_info in zip_ref.infolist():
-                                    if zip_info.filename.lower().endswith(('.gb', '.gbc', '.gba')):
+                                    if zip_info.filename.lower().endswith((".gb", ".gbc", ".gba")):
                                         romfile = os.path.basename(zip_info.filename)
                                         break
                             os.remove(zip_path)  # Remove the archive after extraction
@@ -457,7 +477,6 @@ class GameDownloader:
                                 break
                         except zipfile.BadZipFile:
                             errors.append(f"Bad zip file: {zip_path}")
-
 
             logging.debug("Done downloading files for %s", title)
         except Exception as e:
