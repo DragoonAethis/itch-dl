@@ -100,7 +100,7 @@ def parse_tr(name: str, content: BeautifulSoup) -> tuple[str, Any] | None:
         return "mentions", parse_links(content)
     elif name == "Category":
         return "category", parse_links(content)
-    elif name == "AI Disclosure":
+    elif name == "AI Disclosure" or name == "Content":
         return "ai_content_tags", parse_links(content)
     else:
         # Oops, you need to extend this with something new. Sorry.
