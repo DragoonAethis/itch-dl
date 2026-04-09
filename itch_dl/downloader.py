@@ -251,14 +251,25 @@ class GameDownloader:
     def map_metadata_to_hh(self, metadata: GameMetadata, romfile: str, slug: str, cover_filename: str) -> dict:
         tags = []
 
-        metadata_hh = {
+        metadata_hh: dict[str, str | list | dict] = {
             "$schema": "https://raw.githubusercontent.com/gbdev/database/refs/heads/master/schemas/game-schema-d5.json",
             "slug": slug,
             "title": metadata["title"],
-            "screenshots": [cover_filename] + [f"screenshots/{url.split('/')[-1]}" for url in metadata["screenshots"]],
+            "screenshots": [f"screenshots/{url.split('/')[-1]}" for url in metadata["screenshots"]],
             "typetag": "game",
-            "platform": os.path.splitext(romfile)[1].upper().lstrip("."),
         }
+
+        if romfile:
+            metadata_hh["platform"] = os.path.splitext(romfile)[1].upper().lstrip(".")
+            metadata_hh["files"] = [{
+                "default": True,
+                "filename": f"files/{romfile}",
+                "playable": True,
+            }]
+
+        if cover_filename:
+            # Put the downloaded cover as the first item on this list:
+            metadata_hh["screenshots"].insert(0, cover_filename)
 
         source_code_found = False
         if "links" in metadata["extra"]:
@@ -319,11 +330,7 @@ class GameDownloader:
         # Match and return tags in original casing from hh_tag_list
         metadata_hh["tags"] = [hh_tag_map[tag] for tag in set(tags) if tag in hh_tag_map]
 
-        metadata_hh["files"] = [{
-            "default": True,
-            "filename": f"files/{romfile}",
-            "playable": True,
-        }]
+
 
         metadata_hh["developer"] = metadata["author"]
 
@@ -505,11 +512,12 @@ class GameDownloader:
                 except Exception as e:
                     errors.append(f"Screenshot download failed (this is not fatal): {e}")
 
+        cover_filename = None
         cover_url = metadata.get("cover_url")
-        cover_filename = os.path.basename(paths["cover"] + os.path.splitext(cover_url)[-1])
         if cover_url:
+            cover_filename = paths["cover"] + os.path.splitext(cover_url)[-1]
             try:
-                self.download_file(cover_url, paths["cover"] + os.path.splitext(cover_url)[-1], credentials={})
+                self.download_file(cover_url, cover_filename, credentials={})
             except Exception as e:
                 errors.append(f"Cover art download failed (this is not fatal): {e}")
 
@@ -521,7 +529,8 @@ class GameDownloader:
             with open(paths["metadata"], "w") as f:
                 json.dump(metadata, f, indent=4)
         else:
-            metadata_hh = self.map_metadata_to_hh(metadata, romfile, slug, cover_filename)
+            hh_cover = os.path.basename(cover_filename) if cover_filename else None
+            metadata_hh = self.map_metadata_to_hh(metadata, romfile, slug, hh_cover)
             with open(paths["hh-metadata"], "w") as f:
                 json.dump(metadata_hh, f, indent=4)
 
