@@ -107,6 +107,10 @@ def run() -> int:
             "See https://github.com/DragoonAethis/itch-dl/wiki/API-Keys for more info."
         )
 
+    data = profile_req.json()
+    user_id = data.get("user", {}).get("id")
+    settings.purged_user_id = user_id
+
     jobs = get_jobs_for_url_or_path(url_or_path, settings)
     logging.info("Found %d URL(s) total.", len(jobs))
 

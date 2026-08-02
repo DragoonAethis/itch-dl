@@ -527,12 +527,30 @@ class GameDownloader:
 
         if not self.settings.hh_export:
             # Skip those downloads when creating an Homebrew Hub export
-            with open(paths["site"], "wb") as f:
-                content_warning = site.find("div", id=re.compile("content_warning_\\d+"))
-                if content_warning:
-                    logging.warning("Site for '%s' has a content warning, patching out", title)
-                    content_warning.extract()
 
+            # Preprocess the site to remove things we don't want to save by accident
+            purged_items = [
+                site.find("div", id=re.compile("content_warning_\\d+")),
+                site.find("div", id=re.compile("game_header_\\d+")),
+                site.find("div", id=re.compile("game_theme_editor_\\d+")),
+                site.find("div", id="game_owner_panel"),
+                site.find("div", class_="community_post_form_widget"),
+
+                *site.find_all("div", class_="above_game_banner"),
+
+                site.find("head").find("meta", attrs={"name": "csrf_token"}),
+                site.find("head").find("script", type="text/javascript", text=re.compile("googletagmanager")),
+            ]
+
+            for purged_item in purged_items:
+                if purged_item:
+                    purged_item.extract()
+
+            if self.settings.purged_user_id:
+                for s in site.find("head").find_all("script", type="text/javascript", text=re.compile("current_user")):
+                    s.string = s.string.replace(str(self.settings.purged_user_id), "null")
+
+            with open(paths["site"], "wb") as f:
                 f.write(site.prettify(encoding="utf-8"))
 
             with open(paths["metadata"], "w") as f:

@@ -21,6 +21,9 @@ class Settings:
     cf_clearance: str | None = None
     user_agent: str = f"python-requests/{requests.__version__} itch-dl/{__version__}"
 
+    # Not passed via CLI, fetched dynamically from the /profile API on startup
+    purged_user_id: int | None = None
+
     download_to: str | None = None
     mirror_web: bool = False
     urls_only: bool = False
@@ -38,7 +41,7 @@ class Settings:
     verbose: bool = False
 
 
-def process_platform_traits(platforms: list[str]) -> list[str] | None:
+def process_platform_traits(platforms: list[str] | None) -> list[str] | None:
     """Converts the user-friendly platform strings into itch.io upload p_traits."""
     if not platforms:
         return None
@@ -146,8 +149,13 @@ def load_config(args: argparse.Namespace, profile: str | None = None) -> Setting
     # Apply overrides from CLI args on each field in Settings:
     for field in fields(Settings):
         key = field.name
-        if value := getattr(args, key):
-            setattr(settings, key, value)
+        try:
+            if value := getattr(args, key):
+                setattr(settings, key, value)
+        except AttributeError as e:
+            # Non-CLI settings:
+            if e.name not in ("purged_user_id", ):
+                raise
 
     # Extra handling for special settings:
     settings.filter_files_platform = process_platform_traits(settings.filter_files_platform)
