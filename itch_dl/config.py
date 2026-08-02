@@ -17,6 +17,8 @@ class Settings:
     have default values, as the config file may not exist."""
 
     api_key: str | None = None
+    cookie: str | None = None
+    cf_clearance: str | None = None
     user_agent: str = f"python-requests/{requests.__version__} itch-dl/{__version__}"
 
     download_to: str | None = None

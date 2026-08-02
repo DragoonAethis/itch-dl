@@ -1,21 +1,28 @@
 from typing import Any
 
 import requests
+import logging
 from requests import Session
 from urllib.parse import urlsplit
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
+from .config import Settings
 from .consts import ITCH_API
 
 
 class ItchApiClient:
-    def __init__(self, api_key: str, user_agent: str, base_url: str | None = None) -> None:
+    def __init__(self, settings: Settings, base_url: str | None = None) -> None:
         self.base_url = base_url or ITCH_API
-        self.api_key = api_key
+        self.api_key = settings.api_key
 
         self.requests = Session()
-        self.requests.headers["User-Agent"] = user_agent
+        self.requests.headers["User-Agent"] = settings.user_agent
+
+        if settings.cookie:
+            self.requests.cookies.set("itchio", settings.cookie)
+        if settings.cf_clearance:
+            self.requests.cookies.set("cf-clearance", settings.cf_clearance)
 
         retry_strategy = Retry(
             total=5,
@@ -69,5 +76,11 @@ class ItchApiClient:
         # UTF-8 everywhere, except for binary file downloads.
         if not guess_encoding:
             r.encoding = "utf-8"
+
+        if not r.ok and "challenges.cloudflare.com" in r.text:
+            logging.warning(
+                "WARNING: Request failed - you are likely getting hit with a Cloudflare challenge.\n"
+                "See https://github.com/DragoonAethis/itch-dl/wiki/Cloudflare-Challenge for more info."
+            )
 
         return r

@@ -5,6 +5,7 @@ import logging
 import urllib.parse
 import zipfile
 import tarfile
+from argparse import ArgumentError
 from typing import TypedDict, Any
 
 from bs4 import BeautifulSoup
@@ -63,9 +64,12 @@ class GameMetadata(TypedDict, total=False):
 
 class GameDownloader:
     def __init__(self, settings: Settings, keys: dict[int, str]) -> None:
+        if not settings.api_key:
+            raise ArgumentError("Cannot create a game downloader without a valid API key!")
+
         self.settings = settings
         self.download_keys = keys
-        self.client = ItchApiClient(settings.api_key, settings.user_agent)
+        self.client = ItchApiClient(settings)
 
     @staticmethod
     def get_rating_json(site: BeautifulSoup) -> dict | None:
