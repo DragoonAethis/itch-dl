@@ -1,5 +1,5 @@
 # Developers' private notes/output dirs/etc
-private/
+.private/
 
 # PyCharm exceptions
 .idea/workspace.xml
