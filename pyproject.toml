@@ -53,3 +53,8 @@ target-version = "py310"
 # https://docs.astral.sh/ruff/rules/
 select = ["F", "E", "N", "UP", "ANN", "S", "B", "A", "COM", "C4", "T10", "ISC", "LOG", "Q", "SIM", "TC", "ARG", "PGH", "PLE", "PLW", "RUF", "G"]
 ignore = ["COM812", "LOG015"]
+
+[tool.pyrefly]
+project-includes = [
+    "itch_dl/*.py*",
+]

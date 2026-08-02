@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TypedDict, Any
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 
 class InfoboxMetadata(TypedDict, total=False):
@@ -29,28 +29,28 @@ class InfoboxMetadata(TypedDict, total=False):
     category: dict[str, str]  # Links
 
 
-def parse_date_block(td: BeautifulSoup) -> datetime | None:
+def parse_date_block(td: Tag | BeautifulSoup) -> datetime | None:
     abbr = td.find("abbr")
     if not abbr or "title" not in abbr.attrs:
         return None
 
-    date_str, time_str = abbr["title"].split("@")
+    date_str, time_str = str(abbr["title"]).split("@")
     date = datetime.strptime(date_str.strip(), "%d %B %Y")
     time = datetime.strptime(time_str.strip(), "%H:%M UTC")
     return datetime(date.year, date.month, date.day, time.hour, time.minute)
 
 
-def parse_links(td: BeautifulSoup) -> dict[str, str]:
+def parse_links(td: Tag | BeautifulSoup) -> dict[str, str]:
     """Parses blocks of comma-separated <a> blocks, returns a dict
     of link text -> URL it points at."""
-    return {link.text.strip(): link["href"] for link in td.find_all("a")}
+    return {link.text.strip(): str(link["href"]) for link in td.find_all("a")}
 
 
-def parse_text_from_links(td: BeautifulSoup) -> list[str]:
+def parse_text_from_links(td: Tag | BeautifulSoup) -> list[str]:
     return list(parse_links(td).keys())
 
 
-def parse_tr(name: str, content: BeautifulSoup) -> tuple[str, Any] | None:
+def parse_tr(name: str, content: Tag | BeautifulSoup) -> tuple[str, Any] | None:
     if name == "Updated":
         return "updated_at", parse_date_block(content)
     elif name == "Release date":

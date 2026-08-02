@@ -5,7 +5,6 @@ import logging
 import urllib.parse
 import zipfile
 import tarfile
-from argparse import ArgumentError
 from typing import TypedDict, Any
 
 from bs4 import BeautifulSoup
@@ -65,7 +64,7 @@ class GameMetadata(TypedDict, total=False):
 class GameDownloader:
     def __init__(self, settings: Settings, keys: dict[int, str]) -> None:
         if not settings.api_key:
-            raise ArgumentError("Cannot create a game downloader without a valid API key!")
+            raise ValueError("Cannot create a game downloader without a valid API key!")
 
         self.settings = settings
         self.download_keys = keys
@@ -138,8 +137,18 @@ class GameDownloader:
         return game_id
 
     def extract_metadata(self, game_id: int, url: str, site: BeautifulSoup) -> GameMetadata:
+        title = None
         rating_json: dict | None = self.get_rating_json(site)
-        title = rating_json.get("name") if rating_json else None
+        if rating_json:
+            title = rating_json.get("name")
+
+        if not title:
+            title_node = site.find("h1", class_="game_title")
+            if title_node:
+                title = title_node.text.strip()
+
+        if not title:
+            title = f"Unknown Title ID {game_id}"
 
         description: str | None = self.get_meta(site, property="og:description")
         if not description:
@@ -148,11 +157,11 @@ class GameDownloader:
         screenshot_urls: list[str] = []
         screenshots_node = site.find("div", class_="screenshot_list")
         if screenshots_node:
-            screenshot_urls = [a["href"] for a in screenshots_node.find_all("a")]
+            screenshot_urls = [str(a["href"]) for a in screenshots_node.find_all("a")]
 
         metadata = GameMetadata(
             game_id=game_id,
-            title=title or site.find("h1", class_="game_title").text.strip(),
+            title=title,
             url=url,
             cover_url=self.get_meta(site, property="og:image"),
             screenshots=screenshot_urls,
@@ -225,7 +234,7 @@ class GameDownloader:
         return self.download_file(f"/uploads/{upload_id}/download", download_path, credentials)
 
     @staticmethod
-    def get_decompressed_content_size(target_path: str | os.PathLike[str]) -> None | int:
+    def get_decompressed_content_size(target_path: str | os.PathLike[str]) -> int | None:
         """For some files, Itch API returns the decompressed file size, but serves
         compressed downloads. Try to figure out the decompressed size. It may be
         a single file in the root, or a container + files in it."""
@@ -449,6 +458,8 @@ class GameDownloader:
                     external_urls.append(target_url)
                     continue
 
+                assert target_path is not None  # itch-hosted downloads beyond this point
+
                 try:
                     downloaded_file_stat = os.stat(target_path)
                 except FileNotFoundError:
@@ -528,6 +539,10 @@ class GameDownloader:
         if not self.settings.hh_export:
             # Skip those downloads when creating an Homebrew Hub export
 
+            head = site.find("head")
+            if not head:
+                raise ItchDownloadError("Downloaded site has no <head>!")
+
             # Preprocess the site to remove things we don't want to save by accident
             purged_items = [
                 site.find("div", id=re.compile("content_warning_\\d+")),
@@ -538,8 +553,8 @@ class GameDownloader:
 
                 *site.find_all("div", class_="above_game_banner"),
 
-                site.find("head").find("meta", attrs={"name": "csrf_token"}),
-                site.find("head").find("script", type="text/javascript", text=re.compile("googletagmanager")),
+                head.find("meta", attrs={"name": "csrf_token"}),
+                head.find("script", type="text/javascript", text=re.compile("googletagmanager")),
             ]
 
             for purged_item in purged_items:
@@ -547,7 +562,10 @@ class GameDownloader:
                     purged_item.extract()
 
             if self.settings.purged_user_id:
-                for s in site.find("head").find_all("script", type="text/javascript", text=re.compile("current_user")):
+                for s in head.find_all("script", type="text/javascript", text=re.compile("current_user")):
+                    if not s.string:
+                        continue
+
                     s.string = s.string.replace(str(self.settings.purged_user_id), "null")
 
             with open(paths["site"], "wb") as f:
