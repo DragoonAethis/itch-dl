@@ -119,7 +119,9 @@ def get_jobs_for_collection_json(url: str, client: ItchApiClient) -> list[str]:
 
 def get_jobs_for_creator(creator: str, client: ItchApiClient) -> list[str]:
     logging.info("Downloading public games for creator %s", creator)
-    r = client.get(f"https://{ITCH_BASE}/profile/{creator}", append_api_key=False)
+
+    # Passing cookies here breaks the site rendering for some reason...
+    r = client.get(f"https://{ITCH_BASE}/profile/{creator}", append_api_key=False, cookies={"itchio": None})
     if not r.ok:
         raise ItchDownloadError(f"Could not fetch the creator page: HTTP {r.status_code} {responses[r.status_code]}")
 
