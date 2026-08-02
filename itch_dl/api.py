@@ -2,6 +2,7 @@ from typing import Any
 
 import requests
 from requests import Session
+from urllib.parse import urlsplit
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
@@ -49,8 +50,20 @@ class ItchApiClient:
 
             kwargs["data"] = params
 
+        # Use the API endpoint if not requested otherwise:
         url = endpoint if endpoint.startswith("https://") else self.base_url + endpoint
+
+        # HACK: Send requests to itch.io but pass Host: full.itch.io if the subdomain
+        # contains underscores (workaround for HTTPS issues on dj_link.itch.io/...)
+        parsed_url = urlsplit(url)
+        if parsed_url.netloc.endswith(".itch.io") and "_" in parsed_url.netloc:
+            self.requests.headers["Host"] = parsed_url.netloc
+            url = parsed_url._replace(netloc="itch.io").geturl()
+
         r = self.requests.get(url, **kwargs)
+
+        if "Host" in self.requests.headers:
+            self.requests.headers.pop("Host")
 
         # Itch always returns UTF-8 pages and API responses. Force
         # UTF-8 everywhere, except for binary file downloads.
