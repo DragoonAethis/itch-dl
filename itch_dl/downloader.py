@@ -524,6 +524,11 @@ class GameDownloader:
         if not self.settings.hh_export:
             # Skip those downloads when creating an Homebrew Hub export
             with open(paths["site"], "wb") as f:
+                content_warning = site.find("div", id=re.compile("content_warning_\\d+"))
+                if content_warning:
+                    logging.warning("Site for '%s' has a content warning, patching out", title)
+                    content_warning.extract()
+
                 f.write(site.prettify(encoding="utf-8"))
 
             with open(paths["metadata"], "w") as f:
