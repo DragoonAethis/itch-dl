@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import argparse
+import platform
 
 from .handlers import get_jobs_for_url_or_path, preprocess_job_urls
 from .downloader import drive_downloads
@@ -11,6 +12,7 @@ from .api import ItchApiClient
 from . import __version__
 
 import requests
+import urllib3
 import lxml
 import bs4
 
@@ -26,7 +28,11 @@ def parse_args() -> argparse.Namespace:
         epilog=(
             "Environment: "
             f"itch-dl {__version__}, "
+            f"Python {platform.python_version()}, "
+            f"{platform.platform()}, "
+
             f"requests {requests.__version__}, "
+            f"urllib3 {urllib3.__version__}, "
             f"lxml {lxml.__version__}, "
             f"bs4 {bs4.__version__}"
         )
