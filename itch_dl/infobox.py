@@ -19,6 +19,7 @@ class InfoboxMetadata(TypedDict, total=False):
     asset_license: dict[str, str]  # Links
     tags: dict[str, str]  # Links
     ai_content_tags: dict[str, str]  # Links
+    jams: dict[str, str]  # Links
     length: str
     multiplayer: dict[str, str]  # Links
     player_count: str
@@ -102,6 +103,8 @@ def parse_tr(name: str, content: Tag | BeautifulSoup) -> tuple[str, Any] | None:
         return "category", parse_links(content)
     elif name == "AI Disclosure" or name == "Content":
         return "ai_content_tags", parse_links(content)
+    elif name == "Jams":
+        return "jams", parse_links(content)
     else:
         # Oops, you need to extend this with something new. Sorry.
         # Make sure to add the block name to InfoboxMetadata as well!
